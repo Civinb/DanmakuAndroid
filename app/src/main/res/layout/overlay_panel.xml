@@ -77,6 +77,54 @@
                 android:textColor="#FFFFFFFF"
                 android:textSize="12sp"
                 android:visibility="gone" />
+
+            <!-- 长按某条弹幕后出现：屏蔽此用户 / 屏蔽这句 -->
+            <LinearLayout
+                android:id="@+id/action_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="#F0202020"
+                android:clickable="true"
+                android:focusable="false"
+                android:orientation="vertical"
+                android:paddingStart="10dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/action_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="3"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="12sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/action_block_user"
+                        style="@style/OverlayActionButton"
+                        android:text="@string/block_user" />
+
+                    <TextView
+                        android:id="@+id/action_block_text"
+                        style="@style/OverlayActionButton"
+                        android:text="@string/block_text" />
+
+                    <TextView
+                        android:id="@+id/action_cancel"
+                        style="@style/OverlayActionButton"
+                        android:text="@string/cancel" />
+                </LinearLayout>
+            </LinearLayout>
         </FrameLayout>
     </LinearLayout>
 

@@ -29,6 +29,9 @@ class DanmakuAdapter : RecyclerView.Adapter<DanmakuAdapter.Holder>() {
     private val items = ArrayList<DanmakuItem>()
     private var style = Style()
 
+    /** 长按某条弹幕的回调（悬浮窗据此弹出“屏蔽此用户 / 屏蔽这句”） */
+    var onItemLongClick: ((DanmakuItem) -> Unit)? = null
+
     @SuppressLint("NotifyDataSetChanged")
     fun setStyle(newStyle: Style) {
         if (newStyle == style) return
@@ -51,6 +54,28 @@ class DanmakuAdapter : RecyclerView.Adapter<DanmakuAdapter.Holder>() {
         }
     }
 
+    /** 合并重复弹幕：更新已显示那一行的 ×N。只在最近的 [SEARCH_LIMIT] 条里找，找不到（已被裁掉）就忽略。 */
+    fun updateRepeat(id: Long, count: Int) {
+        val stop = maxOf(0, items.size - SEARCH_LIMIT)
+        for (i in items.size - 1 downTo stop) {
+            if (items[i].id == id) {
+                items[i] = items[i].copy(repeatCount = count)
+                notifyItemChanged(i)
+                return
+            }
+        }
+    }
+
+    /** 删除满足条件的弹幕（新增屏蔽规则后，把已显示的也清掉）。返回删除条数。 */
+    @SuppressLint("NotifyDataSetChanged")
+    fun removeWhere(predicate: (DanmakuItem) -> Boolean): Int {
+        val before = items.size
+        items.removeAll(predicate)
+        val removed = before - items.size
+        if (removed > 0) notifyDataSetChanged()
+        return removed
+    }
+
     fun clear() {
         val n = items.size
         if (n > 0) {
@@ -70,7 +95,17 @@ class DanmakuAdapter : RecyclerView.Adapter<DanmakuAdapter.Holder>() {
             // 阴影让白字在亮色画面上也看得清
             setShadowLayer(3f, 1f, 1f, 0xCC000000.toInt())
         }
-        return Holder(tv)
+        val holder = Holder(tv)
+        tv.setOnLongClickListener {
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION && pos < items.size) {
+                onItemLongClick?.invoke(items[pos])
+                true
+            } else {
+                false
+            }
+        }
+        return holder
     }
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
@@ -114,6 +149,7 @@ class DanmakuAdapter : RecyclerView.Adapter<DanmakuAdapter.Holder>() {
     }
 
     private companion object {
+        const val SEARCH_LIMIT = 300
         val COLOR_NAME = 0xFF9FD3FF.toInt()
         val COLOR_SC = 0xFFFFD54F.toInt()
         val COLOR_GIFT = 0xFFFFB74D.toInt()

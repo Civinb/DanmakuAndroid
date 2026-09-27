@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.civinb.danmuji.R
 import com.civinb.danmuji.model.DanmakuItem
+import com.civinb.danmuji.model.DanmakuKind
 import com.civinb.danmuji.settings.OverlaySettings
 import com.civinb.danmuji.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +50,12 @@ class FloatingWindowController(
     interface Listener {
         fun onCloseRequested()
         fun onWindowStateChanged()
+
+        /** 长按弹幕后点“屏蔽此用户” */
+        fun onBlockUser(item: DanmakuItem)
+
+        /** 长按弹幕后点“屏蔽这句” */
+        fun onBlockText(item: DanmakuItem)
     }
 
     /**
@@ -81,6 +88,13 @@ class FloatingWindowController(
     private val recycler: RecyclerView = panelView.findViewById(R.id.danmaku_list)
     private val btnJumpLatest: TextView = panelView.findViewById(R.id.btn_jump_latest)
     private val resizeHandle: View = panelView.findViewById(R.id.resize_handle)
+    private val actionBar: View = panelView.findViewById(R.id.action_bar)
+    private val actionTitle: TextView = panelView.findViewById(R.id.action_title)
+    private val actionBlockUser: TextView = panelView.findViewById(R.id.action_block_user)
+    private val actionBlockText: TextView = panelView.findViewById(R.id.action_block_text)
+    private val actionCancel: TextView = panelView.findViewById(R.id.action_cancel)
+    private var actionTarget: DanmakuItem? = null
+    private val hideActionBar = Runnable { hideActions() }
     private val panelBackground = GradientDrawable().apply { cornerRadius = 8f * density }
     private val panelParams = newParams()
 
@@ -155,6 +169,17 @@ class FloatingWindowController(
         }
     }
 
+    /** 应用一批更新：新增弹幕 + 已显示弹幕的 ×N 变化 */
+    fun applyBatch(batch: DanmakuBuffer.Batch) {
+        for ((id, count) in batch.repeats) adapter.updateRepeat(id, count)
+        appendBatch(batch.items)
+    }
+
+    /** 删除已显示的、满足条件的弹幕（例如刚添加了屏蔽规则） */
+    fun removeWhere(predicate: (DanmakuItem) -> Boolean) {
+        if (adapter.removeWhere(predicate) > 0 && followLatest) scrollToBottom()
+    }
+
     fun clearItems() {
         adapter.clear()
         unseenCount = 0
@@ -192,6 +217,7 @@ class FloatingWindowController(
 
     fun destroy() {
         destroyed = true
+        panelView.removeCallbacks(hideActionBar)
         detach(unlockView)
         detach(bubbleView)
         detach(panelView)
@@ -225,6 +251,16 @@ class FloatingWindowController(
         })
 
         btnJumpLatest.setOnClickListener { setFollow(true) }
+        adapter.onItemLongClick = { item -> showActions(item) }
+        actionCancel.setOnClickListener { hideActions() }
+        actionBlockUser.setOnClickListener {
+            actionTarget?.let { listener.onBlockUser(it) }
+            hideActions()
+        }
+        actionBlockText.setOnClickListener {
+            actionTarget?.let { listener.onBlockText(it) }
+            hideActions()
+        }
         btnLock.setOnClickListener { setLocked(true) }
         btnCollapse.setOnClickListener { setCollapsed(true) }
         btnClose.setOnClickListener { listener.onCloseRequested() }
@@ -294,7 +330,10 @@ class FloatingWindowController(
         val chrome = if (locked) View.GONE else View.VISIBLE
         titleBar.visibility = chrome
         resizeHandle.visibility = chrome
-        if (locked) btnJumpLatest.visibility = View.GONE
+        if (locked) {
+            btnJumpLatest.visibility = View.GONE
+            hideActions()
+        }
 
         attachOrUpdate(panelView, panelParams)
 
@@ -325,6 +364,37 @@ class FloatingWindowController(
         )
     }
 
+    // ---------------- 长按操作栏 ----------------
+
+    private fun showActions(item: DanmakuItem) {
+        if (settings.locked || item.kind == DanmakuKind.SYSTEM) return
+        actionTarget = item
+        val who = when {
+            !item.userName.isNullOrEmpty() -> item.userName
+            !item.userHash.isNullOrEmpty() -> "视频弹幕发送者"
+            else -> null
+        }
+        val masked = item.userId == 0L && who != null && who.contains('*')
+        actionTitle.text = buildString {
+            append(if (who != null) "$who：" else "")
+            append(item.text.take(60))
+            if (masked) append("\n（未登录时昵称被打码，屏蔽会同时屏蔽所有同样打码名字的用户）")
+        }
+        val canBlockUser = item.userId > 0 || !item.userName.isNullOrEmpty() || !item.userHash.isNullOrEmpty()
+        actionBlockUser.visibility = if (canBlockUser) View.VISIBLE else View.GONE
+        btnJumpLatest.visibility = View.GONE
+        actionBar.visibility = View.VISIBLE
+        panelView.removeCallbacks(hideActionBar)
+        panelView.postDelayed(hideActionBar, ACTION_BAR_TIMEOUT_MS)
+    }
+
+    private fun hideActions() {
+        panelView.removeCallbacks(hideActionBar)
+        actionTarget = null
+        actionBar.visibility = View.GONE
+        if (!followLatest && !settings.locked) updateJumpButton()
+    }
+
     private fun setFollow(follow: Boolean) {
         followLatest = follow
         if (follow) {
@@ -337,7 +407,7 @@ class FloatingWindowController(
     }
 
     private fun updateJumpButton() {
-        if (settings.locked) return
+        if (settings.locked || actionBar.visibility == View.VISIBLE) return
         btnJumpLatest.text = if (unseenCount > 0) "↓ 回到最新（$unseenCount）" else "↓ 回到最新"
         btnJumpLatest.visibility = View.VISIBLE
     }
@@ -538,5 +608,6 @@ class FloatingWindowController(
         const val UNLOCK_DP = 30
         const val MIN_WIDTH_DP = 140
         const val MIN_HEIGHT_DP = 100
+        const val ACTION_BAR_TIMEOUT_MS = 8_000L
     }
 }

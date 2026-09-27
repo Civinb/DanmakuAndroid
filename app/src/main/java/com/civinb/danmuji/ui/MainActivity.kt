@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
 enum class Screen(val title: String) {
     HOME("弹幕机"),
     STYLE("悬浮窗样式"),
+    FILTER("过滤规则"),
     GUIDE("权限与后台保活"),
     PROBE("媒体会话探针"),
     LOG("连接日志"),
@@ -107,6 +108,7 @@ fun AppRoot() {
             when (screen) {
                 Screen.HOME -> HomeScreen(onNavigate = { screen = it })
                 Screen.STYLE -> StyleScreen()
+                Screen.FILTER -> FilterScreen()
                 Screen.GUIDE -> GuideScreen()
                 Screen.PROBE -> ProbeScreen()
                 Screen.LOG -> LogScreen()

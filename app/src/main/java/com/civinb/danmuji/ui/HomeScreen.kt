@@ -153,6 +153,9 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             OutlinedButton(onClick = { onNavigate(Screen.STYLE) }, modifier = Modifier.fillMaxWidth()) {
                 Text("悬浮窗样式")
             }
+            OutlinedButton(onClick = { onNavigate(Screen.FILTER) }, modifier = Modifier.fillMaxWidth()) {
+                Text("过滤规则（屏蔽 / 仅显示 / 合并重复）")
+            }
             OutlinedButton(onClick = { onNavigate(Screen.GUIDE) }, modifier = Modifier.fillMaxWidth()) {
                 Text("权限与后台保活（国产 ROM 必看）")
             }

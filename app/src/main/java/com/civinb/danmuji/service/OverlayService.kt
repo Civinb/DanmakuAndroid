@@ -12,18 +12,25 @@ import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.provider.Settings
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.civinb.danmuji.DanmuApp
+import com.civinb.danmuji.filter.DuplicateMerger
 import com.civinb.danmuji.filter.EmoteFilter
+import com.civinb.danmuji.filter.FilterEngine
+import com.civinb.danmuji.filter.FilterSettings
+import com.civinb.danmuji.filter.RuleAction
+import com.civinb.danmuji.filter.RuleType
 import com.civinb.danmuji.R
 import com.civinb.danmuji.model.DanmakuItem
 import com.civinb.danmuji.model.DanmakuKind
 import com.civinb.danmuji.overlay.DanmakuBuffer
 import com.civinb.danmuji.overlay.FloatingWindowController
 import com.civinb.danmuji.probe.ProbeRecorder
+import com.civinb.danmuji.settings.FilterRepository
 import com.civinb.danmuji.settings.OverlaySettings
 import com.civinb.danmuji.settings.SettingsRepository
 import com.civinb.danmuji.source.DanmakuSource
@@ -43,6 +50,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,15 +65,23 @@ class OverlayService : Service() {
             CoroutineExceptionHandler { _, e -> DebugLog.log("Service", "未捕获异常：$e") },
     )
     private lateinit var repository: SettingsRepository
+    private lateinit var filterRepository: FilterRepository
     private var controller: FloatingWindowController? = null
     private val buffer = DanmakuBuffer()
     private var sourceJob: Job? = null
     private var settingsJob: Job? = null
     private var flushJob: Job? = null
     private var probeJob: Job? = null
+    private var filterJob: Job? = null
 
     @Volatile
     private var currentSettings = OverlaySettings()
+
+    @Volatile
+    private var filterSettings = FilterSettings()
+
+    @Volatile
+    private var filterEngine = FilterEngine(FilterSettings())
     private var statusText = "准备中"
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -73,6 +89,7 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         repository = (application as DanmuApp).settingsRepository
+        filterRepository = (application as DanmuApp).filterRepository
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -125,6 +142,8 @@ class OverlayService : Service() {
         val c = FloatingWindowController(this, scope, repository, object : FloatingWindowController.Listener {
             override fun onCloseRequested() = stopEverything()
             override fun onWindowStateChanged() = updateNotification()
+            override fun onBlockUser(item: DanmakuItem) = blockUser(item)
+            override fun onBlockText(item: DanmakuItem) = blockText(item)
         })
         controller = c
         _running.value = true
@@ -136,11 +155,23 @@ class OverlayService : Service() {
                 updateNotification()
             }
         }
+        filterJob = scope.launch {
+            filterRepository.settings.collect { fs ->
+                val engine = FilterEngine(fs)
+                filterSettings = fs
+                filterEngine = engine
+                if (engine.invalidRules.isNotEmpty()) {
+                    DebugLog.log("Filter", "有 ${engine.invalidRules.size} 条正则无效，已忽略")
+                }
+                // 新增的屏蔽规则对已显示的弹幕也生效
+                c.removeWhere { engine.isBlocked(it) }
+            }
+        }
         flushJob = scope.launch {
             while (isActive) {
                 delay(FLUSH_INTERVAL_MS)
-                val batch = buffer.drain()
-                if (batch.isNotEmpty()) c.appendBatch(batch)
+                val batch = buffer.drainBatch()
+                if (!batch.isEmpty()) c.applyBatch(batch)
             }
         }
         // 媒体会话探针：打开后在标题栏实时显示，并在后台持续记录事件
@@ -175,11 +206,13 @@ class OverlayService : Service() {
         sourceJob?.cancel()
         buffer.clear()
         controller?.clearItems()
+        _filteredCount.value = 0
         sourceJob = scope.launch(Dispatchers.Default) {
+            val merger = DuplicateMerger()
             try {
                 source.events().collect { event ->
                     when (event) {
-                        is SourceEvent.Item -> transform(event.item)?.let { buffer.offer(it) }
+                        is SourceEvent.Item -> handleItem(event.item, merger)
                         is SourceEvent.Status -> withContext(Dispatchers.Main) { showStatus(event.text) }
                     }
                 }
@@ -197,6 +230,44 @@ class OverlayService : Service() {
         statusText = text
         if (!ProbeRecorder.showInOverlay.value) controller?.setTitle(text)
         updateNotification()
+    }
+
+    /** 在弹幕来源的收集协程（后台线程）里调用：开关 → 表情 → 过滤规则 → 合并重复 → 缓冲区 */
+    private fun handleItem(item: DanmakuItem, merger: DuplicateMerger) {
+        val shown = transform(item) ?: return
+        if (!filterEngine.shows(shown)) {
+            _filteredCount.update { it + 1 }
+            return
+        }
+        val fs = filterSettings
+        if (fs.mergeDuplicates) {
+            when (val r = merger.offer(shown, SystemClock.elapsedRealtime(), fs.mergeWindowSec * 1000L)) {
+                is DuplicateMerger.Result.New -> buffer.offer(r.item)
+                is DuplicateMerger.Result.Repeat -> buffer.updateRepeat(r.targetId, r.count)
+            }
+        } else {
+            buffer.offer(shown)
+        }
+    }
+
+    private fun blockUser(item: DanmakuItem) {
+        scope.launch {
+            val (pattern, note) = when {
+                item.userId > 0 -> item.userId.toString() to item.userName.orEmpty()
+                !item.userName.isNullOrEmpty() -> item.userName.orEmpty() to ""
+                !item.userHash.isNullOrEmpty() -> item.userHash.orEmpty() to "视频弹幕发送者"
+                else -> return@launch
+            }
+            filterRepository.addRule(RuleType.USER, RuleAction.BLOCK, pattern, note)
+            Toast.makeText(this@OverlayService, "已屏蔽用户：${item.userName ?: note}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun blockText(item: DanmakuItem) {
+        scope.launch {
+            filterRepository.addRule(RuleType.KEYWORD, RuleAction.BLOCK, item.text)
+            Toast.makeText(this@OverlayService, "已屏蔽：${item.text.take(20)}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** 按设置决定是否显示、以及显示成什么样；返回 null 表示不显示。 */
@@ -276,6 +347,7 @@ class OverlayService : Service() {
         settingsJob?.cancel()
         flushJob?.cancel()
         probeJob?.cancel()
+        filterJob?.cancel()
         controller?.destroy()
         controller = null
         _running.value = false
@@ -296,6 +368,10 @@ class OverlayService : Service() {
 
         private val _running = MutableStateFlow(false)
         val running: StateFlow<Boolean> = _running
+
+        /** 本次连接中被过滤规则挡掉的弹幕数（过滤页面显示） */
+        private val _filteredCount = MutableStateFlow(0)
+        val filteredCount: StateFlow<Int> = _filteredCount
 
         /** 启动（或切换来源）。调用前应已确认有悬浮窗权限。 */
         fun startFake(context: Context, ratePerSecond: Int) {
