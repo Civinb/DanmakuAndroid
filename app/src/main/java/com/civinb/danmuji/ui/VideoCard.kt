@@ -144,5 +144,12 @@ fun VideoCard(overlayGranted: Boolean, initialInput: String?, onInputConsumed: (
         StatusRow("通知使用权（自动同步用）", listenerEnabled, if (listenerEnabled) null else "去开启") {
             Permissions.open(context, Permissions.notificationListenerSettingsIntent())
         }
+        if (!listenerEnabled) {
+            HintText(
+                "本应用不读取任何通知内容，只用它获得读取播放进度的资格。" +
+                    "如果开关是灰色、提示“受限制的设置”：到 应用信息 → 右上角 ⋮ → “允许受限制的设置”，" +
+                    "再回来开启（Android 13+ 对不是从应用商店安装的 App 有此限制）。",
+            )
+        }
     }
 }

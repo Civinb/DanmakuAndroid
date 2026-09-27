@@ -29,12 +29,10 @@ import com.civinb.danmuji.model.DanmakuItem
 import com.civinb.danmuji.model.DanmakuKind
 import com.civinb.danmuji.overlay.DanmakuBuffer
 import com.civinb.danmuji.overlay.FloatingWindowController
-import com.civinb.danmuji.probe.ProbeRecorder
 import com.civinb.danmuji.settings.FilterRepository
 import com.civinb.danmuji.settings.OverlaySettings
 import com.civinb.danmuji.settings.SettingsRepository
 import com.civinb.danmuji.source.DanmakuSource
-import com.civinb.danmuji.source.FakeDanmakuSource
 import com.civinb.danmuji.source.InputDanmakuSource
 import com.civinb.danmuji.source.SourceEvent
 import com.civinb.danmuji.ui.MainActivity
@@ -49,7 +47,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -71,7 +68,6 @@ class OverlayService : Service() {
     private var sourceJob: Job? = null
     private var settingsJob: Job? = null
     private var flushJob: Job? = null
-    private var probeJob: Job? = null
     private var filterJob: Job? = null
 
     @Volatile
@@ -115,8 +111,14 @@ class OverlayService : Service() {
                     stopEverything()
                     return START_NOT_STICKY
                 }
+                val source = createSource(intent)
+                if (source == null) {
+                    // 没有输入（不应出现）：已在显示就保持原样，否则直接结束
+                    if (sourceJob == null) stopEverything()
+                    return START_NOT_STICKY
+                }
                 ensureOverlay()
-                startSource(createSource(intent))
+                startSource(source)
             }
         }
         return START_NOT_STICKY
@@ -150,6 +152,7 @@ class OverlayService : Service() {
             override fun onVideoSeek(positionMs: Long) = (application as DanmuApp).videoSync.seek(positionMs)
         })
         controller = c
+        c.setTitle(statusText)
         _running.value = true
 
         settingsJob = scope.launch {
@@ -178,32 +181,17 @@ class OverlayService : Service() {
                 if (!batch.isEmpty()) c.applyBatch(batch)
             }
         }
-        // 媒体会话探针：打开后在标题栏实时显示，并在后台持续记录事件
-        probeJob = scope.launch {
-            ProbeRecorder.showInOverlay.collectLatest { on ->
-                if (!on) {
-                    c.setTitle(statusText)
-                    return@collectLatest
-                }
-                while (true) {
-                    withContext(Dispatchers.Default) { ProbeRecorder.poll(this@OverlayService) }
-                    c.setTitle(ProbeRecorder.overlaySummary())
-                    delay(500)
-                }
-            }
-        }
     }
 
     // ---------------- 弹幕来源 ----------------
 
-    private fun createSource(intent: Intent?): DanmakuSource {
+    private fun createSource(intent: Intent?): DanmakuSource? {
         val input = intent?.getStringExtra(EXTRA_INPUT)
         if (!input.isNullOrBlank()) {
             val app = application as DanmuApp
             return InputDanmakuSource(input, app.bili, app.network, app.videoSync)
         }
-        val rate = intent?.getIntExtra(EXTRA_RATE, 5) ?: 5
-        return FakeDanmakuSource(rate)
+        return null
     }
 
     private fun startSource(source: DanmakuSource) {
@@ -241,7 +229,7 @@ class OverlayService : Service() {
 
     private fun showStatus(text: String) {
         statusText = text
-        if (!ProbeRecorder.showInOverlay.value) controller?.setTitle(text)
+        controller?.setTitle(text)
         updateNotification()
     }
 
@@ -359,7 +347,6 @@ class OverlayService : Service() {
         sourceJob?.cancel()
         settingsJob?.cancel()
         flushJob?.cancel()
-        probeJob?.cancel()
         filterJob?.cancel()
         controller?.destroy()
         controller = null
@@ -376,7 +363,6 @@ class OverlayService : Service() {
         const val ACTION_STOP = "com.civinb.danmuji.action.STOP"
         const val ACTION_TOGGLE_LOCK = "com.civinb.danmuji.action.TOGGLE_LOCK"
         const val ACTION_TOGGLE_COLLAPSE = "com.civinb.danmuji.action.TOGGLE_COLLAPSE"
-        const val EXTRA_RATE = "rate"
         const val EXTRA_INPUT = "input"
 
         private val _running = MutableStateFlow(false)
@@ -385,14 +371,6 @@ class OverlayService : Service() {
         /** 本次连接中被过滤规则挡掉的弹幕数（过滤页面显示） */
         private val _filteredCount = MutableStateFlow(0)
         val filteredCount: StateFlow<Int> = _filteredCount
-
-        /** 启动（或切换来源）。调用前应已确认有悬浮窗权限。 */
-        fun startFake(context: Context, ratePerSecond: Int) {
-            val intent = Intent(context, OverlayService::class.java)
-                .setAction(ACTION_START)
-                .putExtra(EXTRA_RATE, ratePerSecond)
-            ContextCompat.startForegroundService(context, intent)
-        }
 
         /** 按用户输入（房间号 / 链接 / 分享文字）启动或切换来源。 */
         fun startInput(context: Context, input: String) {

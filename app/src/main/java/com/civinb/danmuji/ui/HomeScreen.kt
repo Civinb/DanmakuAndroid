@@ -16,17 +16,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -54,7 +51,6 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
     ) { granted -> notificationGranted = granted }
 
     val running by OverlayService.running.collectAsStateWithLifecycle()
-    var rate by rememberSaveable { mutableIntStateOf(5) }
     var input by rememberSaveable { mutableStateOf(LastInput.get(context)) }
 
     // 从 B 站 App 分享进来的内容填入输入框
@@ -126,26 +122,6 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             )
         }
 
-        SectionCard("测试：模拟弹幕") {
-            HintText("不连接 B 站，按固定速度产生假弹幕。200 条/秒用于压力测试。")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                listOf(5, 50, 200).forEach { r ->
-                    RadioButton(selected = rate == r, onClick = { rate = r })
-                    Text("$r/秒", Modifier.padding(end = 8.dp))
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { OverlayService.startFake(context, rate) },
-                    enabled = overlayGranted,
-                ) { Text(if (running) "切换速度" else "启动悬浮窗") }
-                OutlinedButton(
-                    onClick = { OverlayService.stop(context) },
-                    enabled = running,
-                ) { Text("停止") }
-            }
-        }
-
         VideoCard(
             overlayGranted = overlayGranted,
             initialInput = sharedVideo,
@@ -164,9 +140,6 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             }
             OutlinedButton(onClick = { onNavigate(Screen.GUIDE) }, modifier = Modifier.fillMaxWidth()) {
                 Text("权限与后台保活（国产 ROM 必看）")
-            }
-            OutlinedButton(onClick = { onNavigate(Screen.PROBE) }, modifier = Modifier.fillMaxWidth()) {
-                Text("媒体会话探针（验证能否自动同步视频进度）")
             }
             OutlinedButton(onClick = { onNavigate(Screen.LOG) }, modifier = Modifier.fillMaxWidth()) {
                 Text("连接日志（出问题时复制给开发者）")

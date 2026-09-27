@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">弹幕机</string>
-    <string name="probe_listener_label">弹幕机 · 媒体会话探针</string>
+    <string name="probe_listener_label">弹幕机 · 视频进度同步</string>
     <string name="lock">锁定（触摸穿透）</string>
     <string name="unlock">解锁</string>
     <string name="collapse">折叠</string>

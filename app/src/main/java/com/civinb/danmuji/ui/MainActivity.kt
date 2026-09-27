@@ -77,7 +77,6 @@ enum class Screen(val title: String) {
     FILTER("过滤规则"),
     ACCOUNT("B 站账号"),
     GUIDE("权限与后台保活"),
-    PROBE("媒体会话探针"),
     LOG("连接日志"),
 }
 
@@ -118,7 +117,6 @@ fun AppRoot() {
                 Screen.FILTER -> FilterScreen()
                 Screen.ACCOUNT -> AccountScreen()
                 Screen.GUIDE -> GuideScreen()
-                Screen.PROBE -> ProbeScreen()
                 Screen.LOG -> LogScreen()
             }
         }

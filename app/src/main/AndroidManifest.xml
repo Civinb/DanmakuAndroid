@@ -53,8 +53,9 @@
         </service>
 
         <!--
-          媒体会话探针：只为了获得 getActiveSessions() 的调用资格，
+          视频进度自动同步：只为了获得 getActiveSessions() 的调用资格，
           本服务不读取、不处理任何通知内容。
+          类名沿用开发期的“探针”命名：改类名会让用户已授予的通知使用权失效。
         -->
         <service
             android:name=".probe.MediaProbeListenerService"

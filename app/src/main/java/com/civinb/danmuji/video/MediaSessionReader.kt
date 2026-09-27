@@ -10,7 +10,7 @@ import android.os.SystemClock
 import com.civinb.danmuji.probe.MediaProbeListenerService
 
 /**
- * 读取 B 站 App 发布到系统的媒体会话（需要“通知使用权”，与探针共用同一个授权）。
+ * 读取 B 站 App 发布到系统的媒体会话（需要“通知使用权”，授权对象是 MediaProbeListenerService）。
  * 会话列表每 2 秒刷新一次，其余时间直接读缓存的控制器，降低开销。
  */
 class MediaSessionReader(context: Context) {

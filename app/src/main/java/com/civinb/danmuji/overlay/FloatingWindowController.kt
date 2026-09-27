@@ -188,7 +188,7 @@ class FloatingWindowController(
         }
     }
 
-    /** 显示/隐藏视频控制条（切到直播或模拟源时隐藏） */
+    /** 显示/隐藏视频控制条（切到直播时隐藏） */
     fun setVideoMode(enabled: Boolean) {
         videoEnabled = enabled
         lastVideoPlaying = null
@@ -221,7 +221,7 @@ class FloatingWindowController(
         val hints = buildList {
             if (!manual) {
                 when (s.autoStatus) {
-                    AutoStatus.NO_PERMISSION -> add("自动同步需要“通知使用权”（首页 → 媒体会话探针里开启），或点“自动”切到手动")
+                    AutoStatus.NO_PERMISSION -> add("自动同步需要“通知使用权”（首页视频卡片里开启），或点“自动”切到手动")
                     AutoStatus.NO_SESSION -> add("未检测到 B 站正在播放，请在 B 站 App 里播放该视频")
                     else -> Unit
                 }
