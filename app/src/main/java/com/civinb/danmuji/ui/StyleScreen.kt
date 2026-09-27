@@ -108,6 +108,14 @@ fun StyleScreen() {
             }
         }
 
+        SectionCard("弹幕内容") {
+            SwitchRow(
+                "隐藏直播间表情",
+                s.hideEmotes,
+                "整条表情弹幕不显示；文字里的 [表情] 去掉，只留文字。Unicode emoji 不受影响。只对之后收到的弹幕生效。",
+            ) { v -> update { it.copy(hideEmotes = v) } }
+        }
+
         SectionCard("直播附加消息") {
             HintText("默认只显示普通弹幕。")
             SwitchRow("醒目留言（SC）", s.showSuperChat) { v -> update { it.copy(showSuperChat = v) } }

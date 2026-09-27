@@ -57,6 +57,12 @@ object LiveCommandParser {
         var uid = userArr?.optLong(0) ?: 0L
         if (uid == 0L) uid = userObj?.optLong("uid") ?: 0L
 
+        // 表情：整条大表情（dm_type=1，info[0][13] 为表情信息）与文字内小表情（extra.emots 的键）
+        val extra = modeInfo?.optString("extra")?.let { parseObject(it) }
+        val emoteOnly = (meta?.optInt(12) ?: 0) == 1 ||
+            extra?.optInt("dm_type") == 1 ||
+            meta?.let { objectAt(it, 13) }?.str("emoticon_unique").isNullOrEmpty().not()
+
         return DanmakuItem(
             id = DanmakuIds.next(),
             kind = DanmakuKind.DANMAKU,
@@ -65,7 +71,34 @@ object LiveCommandParser {
             userId = uid,
             color = meta?.optInt(3, 0xFFFFFF) ?: 0xFFFFFF,
             timestampMs = meta?.optLong(4)?.takeIf { it > 0 } ?: System.currentTimeMillis(),
+            emoteOnly = emoteOnly,
+            emoteTokens = emoteKeys(extra?.optJSONObject("emots")),
         )
+    }
+
+    /** B 站下发的 emots 表的键，即文字里的表情占位符（如 "[热]"）。 */
+    fun emoteKeys(emots: JSONObject?): List<String> {
+        emots ?: return emptyList()
+        val out = ArrayList<String>()
+        val it = emots.keys()
+        while (it.hasNext()) {
+            val k = it.next()
+            if (k.isNotEmpty()) out += k
+        }
+        return out
+    }
+
+    /** 数组元素可能是 JSON 对象，也可能是 JSON 字符串（blivedm 注释：Union[dict, str]）。 */
+    private fun objectAt(arr: JSONArray, index: Int): JSONObject? {
+        arr.optJSONObject(index)?.let { return it }
+        val s = arr.optString(index)
+        return if (s.startsWith("{")) parseObject(s) else null
+    }
+
+    private fun parseObject(s: String): JSONObject? = try {
+        JSONObject(s)
+    } catch (e: Exception) {
+        null
     }
 
     // ---------------- 醒目留言 ----------------

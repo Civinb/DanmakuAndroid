@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.civinb.danmuji.DanmuApp
+import com.civinb.danmuji.filter.EmoteFilter
 import com.civinb.danmuji.R
 import com.civinb.danmuji.model.DanmakuItem
 import com.civinb.danmuji.model.DanmakuKind
@@ -178,7 +179,7 @@ class OverlayService : Service() {
             try {
                 source.events().collect { event ->
                     when (event) {
-                        is SourceEvent.Item -> if (shouldShow(event.item)) buffer.offer(event.item)
+                        is SourceEvent.Item -> transform(event.item)?.let { buffer.offer(it) }
                         is SourceEvent.Status -> withContext(Dispatchers.Main) { showStatus(event.text) }
                     }
                 }
@@ -196,6 +197,13 @@ class OverlayService : Service() {
         statusText = text
         if (!ProbeRecorder.showInOverlay.value) controller?.setTitle(text)
         updateNotification()
+    }
+
+    /** 按设置决定是否显示、以及显示成什么样；返回 null 表示不显示。 */
+    private fun transform(item: DanmakuItem): DanmakuItem? {
+        if (!shouldShow(item)) return null
+        if (currentSettings.hideEmotes && item.kind == DanmakuKind.DANMAKU) return EmoteFilter.apply(item)
+        return item
     }
 
     private fun shouldShow(item: DanmakuItem): Boolean {

@@ -59,4 +59,29 @@ class LiveCommandParserTest {
     fun unknownCmdIgnored() {
         assertTrue(LiveCommandParser.parse("{\"cmd\":\"ONLINE_RANK_COUNT\",\"data\":{}}").isEmpty())
     }
+
+    /** bilibili-API-collect 存档里的真实 DANMU_MSG 样本：文字“白花300块[热]”，extra.emots 含 "[热]" */
+    @Test
+    fun realDanmakuWithInlineEmote() {
+        val item = LiveCommandParser.parse("{\"cmd\": \"DANMU_MSG\", \"dm_v2\": \"\", \"info\": [[0, 1, 25, 9920249, 1723979200649, -1312973962, 0, \"0bc8acd0\", 0, 0, 0, \"\", 0, \"{}\", \"{}\", {\"extra\": \"{\\\"send_from_me\\\":false,\\\"mode\\\":0,\\\"color\\\":9920249,\\\"dm_type\\\":0,\\\"font_size\\\":25,\\\"player_mode\\\":1,\\\"show_player_type\\\":0,\\\"content\\\":\\\"白花300块[热]\\\",\\\"user_hash\\\":\\\"197700816\\\",\\\"emoticon_unique\\\":\\\"\\\",\\\"bulge_display\\\":0,\\\"recommend_score\\\":3,\\\"main_state_dm_color\\\":\\\"\\\",\\\"objective_state_dm_color\\\":\\\"\\\",\\\"direction\\\":0,\\\"pk_direction\\\":0,\\\"quartet_direction\\\":0,\\\"anniversary_crowd\\\":0,\\\"yeah_space_type\\\":\\\"\\\",\\\"yeah_space_url\\\":\\\"\\\",\\\"jump_to_url\\\":\\\"\\\",\\\"space_type\\\":\\\"\\\",\\\"space_url\\\":\\\"\\\",\\\"animation\\\":{},\\\"emots\\\":{\\\"[热]\\\":{\\\"count\\\":1,\\\"descript\\\":\\\"[热]\\\",\\\"emoji\\\":\\\"[热]\\\",\\\"emoticon_id\\\":278,\\\"emoticon_unique\\\":\\\"emoji_278\\\",\\\"height\\\":20,\\\"url\\\":\\\"http://i0.hdslb.com/bfs/live/6df760280b17a6cbac8c1874d357298f982ba4cf.png\\\",\\\"width\\\":20}},\\\"is_audited\\\":false,\\\"id_str\\\":\\\"364b06e3c561af3d5921f1253d66c1d575\\\",\\\"icon\\\":{\\\"prefix\\\":{\\\"type\\\":1,\\\"resource\\\":\\\"ChronosWealth_4.png\\\"}},\\\"show_reply\\\":true,\\\"reply_mid\\\":0,\\\"reply_uname\\\":\\\"\\\",\\\"reply_uname_color\\\":\\\"\\\",\\\"reply_is_mystery\\\":false,\\\"hit_combo\\\":0}\", \"mode\": 0, \"show_player_type\": 0, \"user\": {\"base\": {\"face\": \"https://i1.hdslb.com/bfs/face/5a9bb9cac3afbb58347c808ae76aaa41ca967d07.jpg\", \"is_mystery\": false, \"name\": \"tim1997\", \"name_color\": 0, \"name_color_str\": \"\", \"official_info\": {\"desc\": \"\", \"role\": 0, \"title\": \"\", \"type\": -1}, \"origin_info\": {\"face\": \"https://i1.hdslb.com/bfs/face/5a9bb9cac3afbb58347c808ae76aaa41ca967d07.jpg\", \"name\": \"tim1997\"}, \"risk_ctrl_info\": null}, \"guard\": null, \"guard_leader\": {\"is_guard_leader\": false}, \"medal\": {\"color\": 2951253, \"color_border\": 16771156, \"color_end\": 10329087, \"color_start\": 2951253, \"guard_icon\": \"https://i0.hdslb.com/bfs/live/1d16bf0fcc3b1b768d1179d60f1fdbabe6ab4489.png\", \"guard_level\": 1, \"honor_icon\": \"\", \"id\": 1279130, \"is_light\": 1, \"level\": 29, \"name\": \"果咩吖\", \"ruid\": 3546569288714792, \"score\": 50427312, \"typ\": 0, \"user_receive_count\": 0, \"v2_medal_color_border\": \"#D47AFFFF\", \"v2_medal_color_end\": \"#9660E5CC\", \"v2_medal_color_level\": \"#6C00A099\", \"v2_medal_color_start\": \"#9660E5CC\", \"v2_medal_color_text\": \"#FFFFFFFF\"}, \"title\": {\"old_title_css_id\": \"\", \"title_css_id\": \"\"}, \"uhead_frame\": null, \"uid\": 6088969, \"wealth\": null}}, {\"activity_identity\": \"\", \"activity_source\": 0, \"not_show\": 0}, 0], \"白花300块[热]\", [6088969, \"tim1997\", 0, 0, 0, 10000, 1, \"\"], [29, \"果咩吖\", \"果宝Official\", 31180317, 2951253, \"\", 0, 16771156, 2951253, 10329087, 1, 1, 3546569288714792], [39, 0, 10512625, 42523, 2], [\"\", \"\"], 0, 0, null, {\"ct\": \"AFFF4206\", \"ts\": 1723979200}, 0, 0, null, null, 0, 1040, [49], null]}").single()
+        assertEquals("白花300块[热]", item.text)
+        assertEquals("tim1997", item.userName)
+        assertEquals(listOf("[热]"), item.emoteTokens)
+        assertEquals(false, item.emoteOnly)
+    }
+
+    /** 整条大表情：dm_type=1，info[0][13] 为表情对象（字段取自 blivedm models/web.py 注释示例） */
+    @Test
+    fun stickerDanmaku() {
+        val item = LiveCommandParser.parse("{\"cmd\": \"DANMU_MSG\", \"info\": [[0, 1, 25, 16777215, 1758800000000, -1, 0, \"abc\", 0, 0, 0, \"\", 1, {\"bulge_display\": 0, \"emoticon_unique\": \"official_13\", \"height\": 60, \"in_player_area\": 1, \"is_dynamic\": 1, \"url\": \"https://i0.hdslb.com/bfs/live/a98e35996545509188fe4d24bd1a56518ea5af48.png\", \"width\": 183}, \"{}\", {\"extra\": \"{\\\"dm_type\\\":1,\\\"emots\\\":null}\", \"mode\": 0, \"user\": {\"uid\": 0, \"base\": {\"name\": \"李**\"}}}], \"赞\", [0, \"李**\", 0, 0, 0, 10000, 1, \"\"], [], [0, 0, 0, \"\"], [\"\", \"\"], 0, 0, null, {}, 0, 0, null, null, 0, 0, [0]]}").single()
+        assertEquals(true, item.emoteOnly)
+    }
+
+    /** info[0][13] 以 JSON 字符串形式出现时也能识别（blivedm 注释：Union[dict, str]） */
+    @Test
+    fun stickerDanmakuAsString() {
+        val item = LiveCommandParser.parse("{\"cmd\": \"DANMU_MSG\", \"info\": [[0, 1, 25, 16777215, 1758800000000, -1, 0, \"abc\", 0, 0, 0, \"\", 0, \"{\\\"bulge_display\\\": 0, \\\"emoticon_unique\\\": \\\"official_13\\\", \\\"height\\\": 60, \\\"in_player_area\\\": 1, \\\"is_dynamic\\\": 1, \\\"url\\\": \\\"https://i0.hdslb.com/bfs/live/a98e35996545509188fe4d24bd1a56518ea5af48.png\\\", \\\"width\\\": 183}\", \"{}\", {\"extra\": \"{\\\"dm_type\\\":1,\\\"emots\\\":null}\", \"mode\": 0, \"user\": {\"uid\": 0, \"base\": {\"name\": \"李**\"}}}], \"赞\", [0, \"李**\", 0, 0, 0, 10000, 1, \"\"], [], [0, 0, 0, \"\"], [\"\", \"\"], 0, 0, null, {}, 0, 0, null, null, 0, 0, [0]]}").single()
+        assertEquals(true, item.emoteOnly)
+    }
+
 }

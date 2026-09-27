@@ -16,6 +16,8 @@ enum class DanmakuKind { DANMAKU, SUPER_CHAT, GIFT, ENTER, SYSTEM }
  * @param progressMs  视频弹幕在视频中的时间点（毫秒）；直播弹幕为 null
  * @param price       醒目留言金额（元）/ 礼物总价等，按 kind 解释
  * @param repeatCount 合并重复弹幕后的次数（显示 ×N）
+ * @param emoteOnly   整条弹幕就是一个直播间表情（大表情），text 只是表情名
+ * @param emoteTokens 文字中出现的直播间表情占位符，如 "[热]"、"[dog]"（来自 B 站下发的 emots 表，不是 Unicode emoji）
  */
 data class DanmakuItem(
     val id: Long,
@@ -29,6 +31,8 @@ data class DanmakuItem(
     val progressMs: Long? = null,
     val price: Int = 0,
     val repeatCount: Int = 1,
+    val emoteOnly: Boolean = false,
+    val emoteTokens: List<String> = emptyList(),
 )
 
 object DanmakuIds {

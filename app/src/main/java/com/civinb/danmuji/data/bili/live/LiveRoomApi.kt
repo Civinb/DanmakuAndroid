@@ -93,6 +93,9 @@ class LiveRoomApi(private val http: BiliHttp, private val auth: BiliAuth) {
                         text = text,
                         userName = if (o.isNull("nickname")) null else o.optString("nickname"),
                         userId = o.optLong("uid"),
+                        emoteOnly = o.optInt("dm_type") == 1 ||
+                            o.optJSONObject("emoticon")?.optString("emoticon_unique").isNullOrEmpty().not(),
+                        emoteTokens = LiveCommandParser.emoteKeys(o.optJSONObject("emots")),
                     ),
                 )
             }

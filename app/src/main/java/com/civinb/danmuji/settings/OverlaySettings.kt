@@ -27,4 +27,7 @@ data class OverlaySettings(
     val showSuperChat: Boolean = false,
     val showGift: Boolean = false,
     val showEnter: Boolean = false,
+
+    /** 隐藏 B 站直播间表情（整条表情弹幕不显示，文字里的 [表情] 去掉） */
+    val hideEmotes: Boolean = true,
 )
