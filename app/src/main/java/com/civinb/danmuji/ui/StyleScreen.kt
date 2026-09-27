@@ -112,7 +112,7 @@ fun StyleScreen() {
             HintText("默认只显示普通弹幕。")
             SwitchRow("醒目留言（SC）", s.showSuperChat) { v -> update { it.copy(showSuperChat = v) } }
             SwitchRow("礼物", s.showGift) { v -> update { it.copy(showGift = v) } }
-            SwitchRow("进场消息", s.showEnter) { v -> update { it.copy(showEnter = v) } }
+            SwitchRow("进场与互动（关注、分享等）", s.showEnter) { v -> update { it.copy(showEnter = v) } }
         }
 
         SectionCard("重置") {

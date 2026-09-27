@@ -12,8 +12,8 @@ android {
         applicationId = "com.civinb.danmuji"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     buildTypes {
@@ -55,5 +55,12 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
+    // 网络：HTTP + WebSocket
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // 直播信息流 protover=3 使用 brotli 压缩；Google 官方纯 Java 解码器
+    implementation("org.brotli:dec:0.1.2")
+
     testImplementation("junit:junit:4.13.2")
+    // Android 自带的 org.json 在本地单元测试里是空实现，测试时换成真实实现
+    testImplementation("org.json:json:20231013")
 }

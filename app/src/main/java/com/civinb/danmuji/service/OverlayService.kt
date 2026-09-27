@@ -27,8 +27,12 @@ import com.civinb.danmuji.settings.OverlaySettings
 import com.civinb.danmuji.settings.SettingsRepository
 import com.civinb.danmuji.source.DanmakuSource
 import com.civinb.danmuji.source.FakeDanmakuSource
+import com.civinb.danmuji.source.InputDanmakuSource
 import com.civinb.danmuji.source.SourceEvent
 import com.civinb.danmuji.ui.MainActivity
+import com.civinb.danmuji.util.DebugLog
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,7 +51,10 @@ import kotlinx.coroutines.withContext
  */
 class OverlayService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Main.immediate +
+            CoroutineExceptionHandler { _, e -> DebugLog.log("Service", "未捕获异常：$e") },
+    )
     private lateinit var repository: SettingsRepository
     private var controller: FloatingWindowController? = null
     private val buffer = DanmakuBuffer()
@@ -154,7 +161,11 @@ class OverlayService : Service() {
     // ---------------- 弹幕来源 ----------------
 
     private fun createSource(intent: Intent?): DanmakuSource {
-        // 第 1 步只有模拟源；第 2 步在这里加直播源，第 4 步加视频源
+        val input = intent?.getStringExtra(EXTRA_INPUT)
+        if (!input.isNullOrBlank()) {
+            val app = application as DanmuApp
+            return InputDanmakuSource(input, app.bili, app.network)
+        }
         val rate = intent?.getIntExtra(EXTRA_RATE, 5) ?: 5
         return FakeDanmakuSource(rate)
     }
@@ -164,17 +175,27 @@ class OverlayService : Service() {
         buffer.clear()
         controller?.clearItems()
         sourceJob = scope.launch(Dispatchers.Default) {
-            source.events().collect { event ->
-                when (event) {
-                    is SourceEvent.Item -> if (shouldShow(event.item)) buffer.offer(event.item)
-                    is SourceEvent.Status -> withContext(Dispatchers.Main) {
-                        statusText = event.text
-                        if (!ProbeRecorder.showInOverlay.value) controller?.setTitle(event.text)
-                        updateNotification()
+            try {
+                source.events().collect { event ->
+                    when (event) {
+                        is SourceEvent.Item -> if (shouldShow(event.item)) buffer.offer(event.item)
+                        is SourceEvent.Status -> withContext(Dispatchers.Main) { showStatus(event.text) }
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 来源内部未处理的异常不能让整个应用崩溃
+                DebugLog.log("Service", "弹幕来源异常：$e")
+                withContext(Dispatchers.Main) { showStatus("出错：${e.message ?: e.javaClass.simpleName}") }
             }
         }
+    }
+
+    private fun showStatus(text: String) {
+        statusText = text
+        if (!ProbeRecorder.showInOverlay.value) controller?.setTitle(text)
+        updateNotification()
     }
 
     private fun shouldShow(item: DanmakuItem): Boolean {
@@ -263,6 +284,7 @@ class OverlayService : Service() {
         const val ACTION_TOGGLE_LOCK = "com.civinb.danmuji.action.TOGGLE_LOCK"
         const val ACTION_TOGGLE_COLLAPSE = "com.civinb.danmuji.action.TOGGLE_COLLAPSE"
         const val EXTRA_RATE = "rate"
+        const val EXTRA_INPUT = "input"
 
         private val _running = MutableStateFlow(false)
         val running: StateFlow<Boolean> = _running
@@ -272,6 +294,14 @@ class OverlayService : Service() {
             val intent = Intent(context, OverlayService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_RATE, ratePerSecond)
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        /** 按用户输入（房间号 / 链接 / 分享文字）启动或切换来源。 */
+        fun startInput(context: Context, input: String) {
+            val intent = Intent(context, OverlayService::class.java)
+                .setAction(ACTION_START)
+                .putExtra(EXTRA_INPUT, input)
             ContextCompat.startForegroundService(context, intent)
         }
 

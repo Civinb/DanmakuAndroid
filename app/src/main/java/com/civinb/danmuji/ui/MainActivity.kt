@@ -1,6 +1,8 @@
 package com.civinb.danmuji.ui
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -22,6 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.civinb.danmuji.service.OverlayService
+import com.civinb.danmuji.util.LastInput
+import com.civinb.danmuji.util.Permissions
+import com.civinb.danmuji.util.ShareInbox
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,6 +37,31 @@ class MainActivity : ComponentActivity() {
                 AppRoot()
             }
         }
+        // 旋转屏幕等重建时不要重复处理同一个分享
+        if (savedInstanceState == null) handleShare(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShare(intent)
+    }
+
+    /** 从 B 站 App “分享”进来：有悬浮窗权限就直接启动并退回 B 站，否则填入首页输入框。 */
+    private fun handleShare(intent: Intent?) {
+        val i = intent ?: return
+        if (i.action != Intent.ACTION_SEND) return
+        val text = i.getStringExtra(Intent.EXTRA_TEXT)?.trim().orEmpty()
+        if (text.isEmpty()) return
+        LastInput.save(this, text)
+        ShareInbox.text.value = text
+        if (!Permissions.canDrawOverlays(this)) {
+            Toast.makeText(this, "请先授予悬浮窗权限，再点“连接”", Toast.LENGTH_LONG).show()
+            return
+        }
+        OverlayService.startInput(this, text)
+        Toast.makeText(this, "弹幕机：正在连接…", Toast.LENGTH_SHORT).show()
+        moveTaskToBack(true)
     }
 }
 
@@ -39,6 +70,7 @@ enum class Screen(val title: String) {
     STYLE("悬浮窗样式"),
     GUIDE("权限与后台保活"),
     PROBE("媒体会话探针"),
+    LOG("连接日志"),
 }
 
 @Composable
@@ -77,6 +109,7 @@ fun AppRoot() {
                 Screen.STYLE -> StyleScreen()
                 Screen.GUIDE -> GuideScreen()
                 Screen.PROBE -> ProbeScreen()
+                Screen.LOG -> LogScreen()
             }
         }
     }

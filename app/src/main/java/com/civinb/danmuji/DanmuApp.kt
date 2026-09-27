@@ -3,16 +3,27 @@ package com.civinb.danmuji
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.util.Log
+import com.civinb.danmuji.data.bili.BiliClient
 import com.civinb.danmuji.settings.SettingsRepository
+import com.civinb.danmuji.util.DebugLog
+import com.civinb.danmuji.util.NetworkMonitor
 
 class DanmuApp : Application() {
 
     lateinit var settingsRepository: SettingsRepository
         private set
+    lateinit var bili: BiliClient
+        private set
+    lateinit var network: NetworkMonitor
+        private set
 
     override fun onCreate() {
         super.onCreate()
+        DebugLog.sink = { tag, msg -> Log.d("Danmuji/$tag", msg) }
         settingsRepository = SettingsRepository(this)
+        bili = BiliClient(this)
+        network = NetworkMonitor(this)
         createNotificationChannels()
     }
 
