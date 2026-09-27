@@ -24,6 +24,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.civinb.danmuji.data.bili.link.LinkParser
+import com.civinb.danmuji.data.bili.link.LinkTarget
 import com.civinb.danmuji.service.OverlayService
 import com.civinb.danmuji.util.LastInput
 import com.civinb.danmuji.util.Permissions
@@ -53,8 +55,12 @@ class MainActivity : ComponentActivity() {
         if (i.action != Intent.ACTION_SEND) return
         val text = i.getStringExtra(Intent.EXTRA_TEXT)?.trim().orEmpty()
         if (text.isEmpty()) return
-        LastInput.save(this, text)
-        ShareInbox.text.value = text
+        if (LinkParser.parse(text) is LinkTarget.Video) {
+            ShareInbox.video.value = text
+        } else {
+            LastInput.save(this, text)
+            ShareInbox.text.value = text
+        }
         if (!Permissions.canDrawOverlays(this)) {
             Toast.makeText(this, "请先授予悬浮窗权限，再点“连接”", Toast.LENGTH_LONG).show()
             return
@@ -69,6 +75,7 @@ enum class Screen(val title: String) {
     HOME("弹幕机"),
     STYLE("悬浮窗样式"),
     FILTER("过滤规则"),
+    ACCOUNT("B 站账号"),
     GUIDE("权限与后台保活"),
     PROBE("媒体会话探针"),
     LOG("连接日志"),
@@ -109,6 +116,7 @@ fun AppRoot() {
                 Screen.HOME -> HomeScreen(onNavigate = { screen = it })
                 Screen.STYLE -> StyleScreen()
                 Screen.FILTER -> FilterScreen()
+                Screen.ACCOUNT -> AccountScreen()
                 Screen.GUIDE -> GuideScreen()
                 Screen.PROBE -> ProbeScreen()
                 Screen.LOG -> LogScreen()

@@ -58,6 +58,7 @@ private object Keys {
     val SHOW_GIFT = booleanPreferencesKey("show_gift")
     val SHOW_ENTER = booleanPreferencesKey("show_enter")
     val HIDE_EMOTES = booleanPreferencesKey("hide_emotes")
+    val SHOW_VIDEO_TIME = booleanPreferencesKey("show_video_time")
 }
 
 private fun Preferences.toOverlaySettings(): OverlaySettings {
@@ -82,6 +83,7 @@ private fun Preferences.toOverlaySettings(): OverlaySettings {
         showGift = this[Keys.SHOW_GIFT] ?: d.showGift,
         showEnter = this[Keys.SHOW_ENTER] ?: d.showEnter,
         hideEmotes = this[Keys.HIDE_EMOTES] ?: d.hideEmotes,
+        showVideoTime = this[Keys.SHOW_VIDEO_TIME] ?: d.showVideoTime,
     )
 }
 
@@ -105,4 +107,5 @@ private fun OverlaySettings.writeTo(p: MutablePreferences) {
     p[Keys.SHOW_GIFT] = showGift
     p[Keys.SHOW_ENTER] = showEnter
     p[Keys.HIDE_EMOTES] = hideEmotes
+    p[Keys.SHOW_VIDEO_TIME] = showVideoTime
 }

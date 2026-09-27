@@ -30,4 +30,7 @@ data class OverlaySettings(
 
     /** 隐藏 B 站直播间表情（整条表情弹幕不显示，文字里的 [表情] 去掉） */
     val hideEmotes: Boolean = true,
+
+    /** 视频弹幕前显示它在视频中的时间点（便于手动对齐） */
+    val showVideoTime: Boolean = true,
 )

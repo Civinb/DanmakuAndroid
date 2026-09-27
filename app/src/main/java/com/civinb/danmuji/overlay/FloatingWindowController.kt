@@ -18,6 +18,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -26,6 +27,9 @@ import com.civinb.danmuji.model.DanmakuItem
 import com.civinb.danmuji.model.DanmakuKind
 import com.civinb.danmuji.settings.OverlaySettings
 import com.civinb.danmuji.settings.SettingsRepository
+import com.civinb.danmuji.video.AutoStatus
+import com.civinb.danmuji.video.SyncMode
+import com.civinb.danmuji.video.VideoUiState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -56,6 +60,12 @@ class FloatingWindowController(
 
         /** 长按弹幕后点“屏蔽这句” */
         fun onBlockText(item: DanmakuItem)
+
+        // ---- 视频模式控制条 ----
+        fun onVideoToggleMode()
+        fun onVideoTogglePlay()
+        fun onVideoNudge(deltaMs: Long)
+        fun onVideoSeek(positionMs: Long)
     }
 
     /**
@@ -94,6 +104,15 @@ class FloatingWindowController(
     private val actionBlockText: TextView = panelView.findViewById(R.id.action_block_text)
     private val actionCancel: TextView = panelView.findViewById(R.id.action_cancel)
     private var actionTarget: DanmakuItem? = null
+    private val videoBar: View = panelView.findViewById(R.id.video_bar)
+    private val videoMode: TextView = panelView.findViewById(R.id.video_mode)
+    private val videoPlay: ImageButton = panelView.findViewById(R.id.video_play)
+    private val videoTime: TextView = panelView.findViewById(R.id.video_time)
+    private val videoSeek: SeekBar = panelView.findViewById(R.id.video_seek)
+    private val videoHint: TextView = panelView.findViewById(R.id.video_hint)
+    private var videoEnabled = false
+    private var userSeeking = false
+    private var lastVideoPlaying: Boolean? = null
     private val hideActionBar = Runnable { hideActions() }
     private val panelBackground = GradientDrawable().apply { cornerRadius = 8f * density }
     private val panelParams = newParams()
@@ -167,6 +186,65 @@ class FloatingWindowController(
             unseenCount += batch.size
             updateJumpButton()
         }
+    }
+
+    /** 显示/隐藏视频控制条（切到直播或模拟源时隐藏） */
+    fun setVideoMode(enabled: Boolean) {
+        videoEnabled = enabled
+        lastVideoPlaying = null
+        refreshVideoBar()
+    }
+
+    fun updateVideoState(s: VideoUiState) {
+        if (!videoEnabled) setVideoMode(true)
+        val manual = s.mode == SyncMode.MANUAL
+        videoMode.setText(if (manual) R.string.video_manual else R.string.video_auto)
+        videoPlay.visibility = if (manual) View.VISIBLE else View.GONE
+        if (lastVideoPlaying != s.playing) {
+            lastVideoPlaying = s.playing
+            videoPlay.setImageResource(if (s.playing) R.drawable.ic_pause else R.drawable.ic_play)
+        }
+        videoSeek.visibility = if (manual) View.VISIBLE else View.GONE
+        if (!userSeeking) {
+            val offset = if (!manual && s.offsetMs != 0L) {
+                "  偏移" + (if (s.offsetMs > 0) "+" else "−") + "%.1fs".format(kotlin.math.abs(s.offsetMs) / 1000.0)
+            } else {
+                ""
+            }
+            videoTime.text = "${fmtTime(s.positionMs)} / ${fmtTime(s.durationMs)}$offset"
+            if (manual) {
+                val maxSec = (s.durationMs / 1000).toInt().coerceAtLeast(1)
+                if (videoSeek.max != maxSec) videoSeek.max = maxSec
+                videoSeek.progress = (s.positionMs / 1000).toInt().coerceIn(0, maxSec)
+            }
+        }
+        val hints = buildList {
+            if (!manual) {
+                when (s.autoStatus) {
+                    AutoStatus.NO_PERMISSION -> add("自动同步需要“通知使用权”（首页 → 媒体会话探针里开启），或点“自动”切到手动")
+                    AutoStatus.NO_SESSION -> add("未检测到 B 站正在播放，请在 B 站 App 里播放该视频")
+                    else -> Unit
+                }
+                if (s.titleMismatch) add("B站当前播放「${s.sessionTitle.orEmpty().take(24)}」，可能不是这个视频")
+            }
+            if (s.loadedSegments < s.totalSegments) add("弹幕加载中 ${s.loadedSegments}/${s.totalSegments} 段")
+        }
+        val hint = hints.joinToString("\n")
+        if (videoHint.text.toString() != hint) videoHint.text = hint
+        videoHint.visibility = if (hint.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    private fun refreshVideoBar() {
+        videoBar.visibility = if (videoEnabled && !settings.locked) View.VISIBLE else View.GONE
+    }
+
+    private fun fmtTime(ms: Long): String {
+        if (ms <= 0 && ms != 0L) return "--:--"
+        val total = ms / 1000
+        val h = total / 3600
+        val m = (total % 3600) / 60
+        val sec = total % 60
+        return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
     }
 
     /** 应用一批更新：新增弹幕 + 已显示弹幕的 ×N 变化 */
@@ -252,6 +330,26 @@ class FloatingWindowController(
 
         btnJumpLatest.setOnClickListener { setFollow(true) }
         adapter.onItemLongClick = { item -> showActions(item) }
+        videoMode.setOnClickListener { listener.onVideoToggleMode() }
+        videoPlay.setOnClickListener { listener.onVideoTogglePlay() }
+        panelView.findViewById<View>(R.id.video_back5).setOnClickListener { listener.onVideoNudge(-5_000) }
+        panelView.findViewById<View>(R.id.video_back1).setOnClickListener { listener.onVideoNudge(-1_000) }
+        panelView.findViewById<View>(R.id.video_fwd1).setOnClickListener { listener.onVideoNudge(1_000) }
+        panelView.findViewById<View>(R.id.video_fwd5).setOnClickListener { listener.onVideoNudge(5_000) }
+        videoSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
+                if (fromUser) videoTime.text = "${fmtTime(progress * 1000L)} / ${fmtTime(bar.max * 1000L)}"
+            }
+
+            override fun onStartTrackingTouch(bar: SeekBar) {
+                userSeeking = true
+            }
+
+            override fun onStopTrackingTouch(bar: SeekBar) {
+                userSeeking = false
+                listener.onVideoSeek(bar.progress * 1000L)
+            }
+        })
         actionCancel.setOnClickListener { hideActions() }
         actionBlockUser.setOnClickListener {
             actionTarget?.let { listener.onBlockUser(it) }
@@ -330,6 +428,7 @@ class FloatingWindowController(
         val chrome = if (locked) View.GONE else View.VISIBLE
         titleBar.visibility = chrome
         resizeHandle.visibility = chrome
+        refreshVideoBar()
         if (locked) {
             btnJumpLatest.visibility = View.GONE
             hideActions()
@@ -360,6 +459,7 @@ class FloatingWindowController(
                 textColor = settings.textColor,
                 lineSpacingPx = dp(settings.lineSpacingDp),
                 showUserName = settings.showUserName,
+                showVideoTime = settings.showVideoTime,
             ),
         )
     }

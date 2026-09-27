@@ -11,4 +11,7 @@
     <string name="block_user">屏蔽此用户</string>
     <string name="block_text">屏蔽这句</string>
     <string name="cancel">取消</string>
+    <string name="video_auto">自动</string>
+    <string name="video_manual">手动</string>
+    <string name="video_play">播放/暂停</string>
 </resources>

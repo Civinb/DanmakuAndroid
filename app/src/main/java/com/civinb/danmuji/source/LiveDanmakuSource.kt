@@ -90,6 +90,7 @@ class LiveDanmakuSource(
         }
 
         val buvid = bili.auth.ensureBuvid()
+        DebugLog.log(TAG, if (bili.login.isLoggedIn()) "使用已登录身份连接（UID ${bili.login.mid()}）" else "未登录连接（他人昵称会被打码）")
         var conf: DanmuConf? = null
         var attempt = 0
         var everConnected = false
@@ -294,7 +295,7 @@ class LiveDanmakuSource(
 
     private fun authPacket(room: LiveRoomInfo, conf: DanmuConf, buvid: String): ByteArray {
         val body = JSONObject()
-            .put("uid", 0) // 未登录
+            .put("uid", bili.login.mid()) // 已登录时为自己的 UID（blivedm 同样做法），未登录为 0
             .put("roomid", room.roomId)
             .put("protover", 3) // brotli
             .put("platform", "web")

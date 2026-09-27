@@ -144,6 +144,10 @@ class OverlayService : Service() {
             override fun onWindowStateChanged() = updateNotification()
             override fun onBlockUser(item: DanmakuItem) = blockUser(item)
             override fun onBlockText(item: DanmakuItem) = blockText(item)
+            override fun onVideoToggleMode() = (application as DanmuApp).videoSync.toggleMode()
+            override fun onVideoTogglePlay() = (application as DanmuApp).videoSync.togglePlay()
+            override fun onVideoNudge(deltaMs: Long) = (application as DanmuApp).videoSync.nudge(deltaMs)
+            override fun onVideoSeek(positionMs: Long) = (application as DanmuApp).videoSync.seek(positionMs)
         })
         controller = c
         _running.value = true
@@ -196,7 +200,7 @@ class OverlayService : Service() {
         val input = intent?.getStringExtra(EXTRA_INPUT)
         if (!input.isNullOrBlank()) {
             val app = application as DanmuApp
-            return InputDanmakuSource(input, app.bili, app.network)
+            return InputDanmakuSource(input, app.bili, app.network, app.videoSync)
         }
         val rate = intent?.getIntExtra(EXTRA_RATE, 5) ?: 5
         return FakeDanmakuSource(rate)
@@ -207,12 +211,21 @@ class OverlayService : Service() {
         buffer.clear()
         controller?.clearItems()
         _filteredCount.value = 0
+        controller?.setVideoMode(false)
         sourceJob = scope.launch(Dispatchers.Default) {
             val merger = DuplicateMerger()
             try {
                 source.events().collect { event ->
                     when (event) {
                         is SourceEvent.Item -> handleItem(event.item, merger)
+                        SourceEvent.Clear -> {
+                            buffer.clear()
+                            merger.clear()
+                            withContext(Dispatchers.Main) { controller?.clearItems() }
+                        }
+                        is SourceEvent.VideoState -> withContext(Dispatchers.Main) {
+                            controller?.updateVideoState(event.state)
+                        }
                         is SourceEvent.Status -> withContext(Dispatchers.Main) { showStatus(event.text) }
                     }
                 }

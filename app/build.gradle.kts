@@ -12,8 +12,8 @@ android {
         applicationId = "com.civinb.danmuji"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 5
+        versionName = "0.5.0"
     }
 
     buildTypes {
@@ -59,6 +59,8 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // 直播信息流 protover=3 使用 brotli 压缩；Google 官方纯 Java 解码器
     implementation("org.brotli:dec:0.1.2")
+    // 生成扫码登录的二维码
+    implementation("com.google.zxing:core:3.5.3")
 
     testImplementation("junit:junit:4.13.2")
     // Android 自带的 org.json 在本地单元测试里是空实现，测试时换成真实实现

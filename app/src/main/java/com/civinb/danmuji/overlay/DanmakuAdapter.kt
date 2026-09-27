@@ -22,6 +22,7 @@ class DanmakuAdapter : RecyclerView.Adapter<DanmakuAdapter.Holder>() {
         val textColor: Int = Color.WHITE,
         val lineSpacingPx: Int = 8,
         val showUserName: Boolean = true,
+        val showVideoTime: Boolean = true,
     )
 
     class Holder(val text: TextView) : RecyclerView.ViewHolder(text)
@@ -120,6 +121,11 @@ class DanmakuAdapter : RecyclerView.Adapter<DanmakuAdapter.Holder>() {
 
     private fun format(item: DanmakuItem): CharSequence {
         val sb = SpannableStringBuilder()
+        val progress = item.progressMs
+        if (progress != null && style.showVideoTime) {
+            val sec = progress / 1000
+            sb.appendColored("%d:%02d ".format(sec / 60, sec % 60), COLOR_TIME)
+        }
         when (item.kind) {
             DanmakuKind.SUPER_CHAT -> sb.appendColored("【SC ¥${item.price}】", COLOR_SC)
             DanmakuKind.GIFT -> sb.appendColored("【礼物】", COLOR_GIFT)
@@ -156,5 +162,6 @@ class DanmakuAdapter : RecyclerView.Adapter<DanmakuAdapter.Holder>() {
         val COLOR_ENTER = 0xFFB0BEC5.toInt()
         val COLOR_SYSTEM = 0xFF80CBC4.toInt()
         val COLOR_REPEAT = 0xFFFF8A80.toInt()
+        val COLOR_TIME = 0x99FFFFFF.toInt()
     }
 }

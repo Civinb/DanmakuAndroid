@@ -47,6 +47,81 @@
                 android:src="@drawable/ic_close" />
         </LinearLayout>
 
+        <!-- 视频模式控制条：自动/手动、播放暂停、±秒、进度 -->
+        <LinearLayout
+            android:id="@+id/video_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="4dp"
+            android:paddingEnd="8dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/video_mode"
+                    style="@style/OverlayVideoButton"
+                    android:text="@string/video_auto" />
+
+                <ImageButton
+                    android:id="@+id/video_play"
+                    style="@style/OverlayIconButton"
+                    android:contentDescription="@string/video_play"
+                    android:src="@drawable/ic_play" />
+
+                <TextView
+                    android:id="@+id/video_back5"
+                    style="@style/OverlayVideoButton"
+                    android:text="−5" />
+
+                <TextView
+                    android:id="@+id/video_back1"
+                    style="@style/OverlayVideoButton"
+                    android:text="−1" />
+
+                <TextView
+                    android:id="@+id/video_fwd1"
+                    style="@style/OverlayVideoButton"
+                    android:text="+1" />
+
+                <TextView
+                    android:id="@+id/video_fwd5"
+                    style="@style/OverlayVideoButton"
+                    android:text="+5" />
+
+                <TextView
+                    android:id="@+id/video_time"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:maxLines="1"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <SeekBar
+                android:id="@+id/video_seek"
+                android:layout_width="match_parent"
+                android:layout_height="24dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/video_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="6dp"
+                android:maxLines="3"
+                android:textColor="#FFFFD54F"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"

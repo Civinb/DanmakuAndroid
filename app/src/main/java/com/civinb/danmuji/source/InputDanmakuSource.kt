@@ -7,6 +7,7 @@ import com.civinb.danmuji.model.DanmakuItem
 import com.civinb.danmuji.model.DanmakuKind
 import com.civinb.danmuji.util.DebugLog
 import com.civinb.danmuji.util.NetworkMonitor
+import com.civinb.danmuji.video.VideoSync
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -18,6 +19,7 @@ class InputDanmakuSource(
     private val input: String,
     private val bili: BiliClient,
     private val network: NetworkMonitor,
+    private val videoSync: VideoSync,
 ) : DanmakuSource {
 
     override fun events(): Flow<SourceEvent> = flow {
@@ -25,11 +27,7 @@ class InputDanmakuSource(
         DebugLog.log("Input", "输入：${input.take(200)}")
         when (val target = bili.linkResolver.resolve(input)) {
             is LinkTarget.Live -> emitAll(LiveDanmakuSource(target.roomId, bili, network).events())
-            is LinkTarget.Video -> {
-                val id = target.bvid ?: "av${target.aid}"
-                emit(SourceEvent.Status("识别到视频 $id"))
-                emit(system("识别到视频 $id。视频弹幕将在第 4 步实现，目前只支持直播。"))
-            }
+            is LinkTarget.Video -> emitAll(VideoDanmakuSource(target, bili, videoSync).events())
             is LinkTarget.Invalid -> {
                 emit(SourceEvent.Status(target.reason))
                 emit(system(target.reason))

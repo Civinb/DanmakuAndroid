@@ -114,6 +114,11 @@ fun StyleScreen() {
                 s.hideEmotes,
                 "整条表情弹幕不显示；文字里的 [表情] 去掉，只留文字。Unicode emoji 不受影响。只对之后收到的弹幕生效。",
             ) { v -> update { it.copy(hideEmotes = v) } }
+            SwitchRow(
+                "视频弹幕显示时间点",
+                s.showVideoTime,
+                "在每条视频弹幕前显示它在视频中的时间（如 12:34），方便核对同步是否准确。",
+            ) { v -> update { it.copy(showVideoTime = v) } }
         }
 
         SectionCard("直播附加消息") {

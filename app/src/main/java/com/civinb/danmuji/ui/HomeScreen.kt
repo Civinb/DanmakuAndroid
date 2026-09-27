@@ -59,6 +59,7 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
 
     // 从 B 站 App 分享进来的内容填入输入框
     val shared by ShareInbox.text.collectAsStateWithLifecycle()
+    val sharedVideo by ShareInbox.video.collectAsStateWithLifecycle()
     LaunchedEffect(shared) {
         shared?.let {
             input = it
@@ -145,13 +146,18 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             }
         }
 
-        SectionCard("视频弹幕") {
-            HintText("第 4 步实现。")
-        }
+        VideoCard(
+            overlayGranted = overlayGranted,
+            initialInput = sharedVideo,
+            onInputConsumed = { ShareInbox.video.value = null },
+        )
 
         SectionCard("更多") {
             OutlinedButton(onClick = { onNavigate(Screen.STYLE) }, modifier = Modifier.fillMaxWidth()) {
                 Text("悬浮窗样式")
+            }
+            OutlinedButton(onClick = { onNavigate(Screen.ACCOUNT) }, modifier = Modifier.fillMaxWidth()) {
+                Text("B 站账号（扫码登录，可选）")
             }
             OutlinedButton(onClick = { onNavigate(Screen.FILTER) }, modifier = Modifier.fillMaxWidth()) {
                 Text("过滤规则（屏蔽 / 仅显示 / 合并重复）")

@@ -6,9 +6,12 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Cookie
 import okhttp3.CookieJar
+import okhttp3.FormBody
 import okhttp3.HttpUrl
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
@@ -58,6 +61,48 @@ class BiliHttp(prefs: SharedPreferences) {
         return client.newCall(request).await().use { resp ->
             if (!resp.isSuccessful) throw BiliHttpException(resp.code)
             JSONObject(resp.body?.string() ?: throw IOException("empty body"))
+        }
+    }
+
+    /** POST 一个 JSON 请求体，返回 JSON 响应。 */
+    suspend fun postJson(url: HttpUrl, body: JSONObject, referer: String? = null): JSONObject {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", USER_AGENT)
+            .apply { if (referer != null) header("Referer", referer) }
+            .post(body.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+        return client.newCall(request).await().use { resp ->
+            if (!resp.isSuccessful) throw BiliHttpException(resp.code)
+            JSONObject(resp.body?.string() ?: throw IOException("empty body"))
+        }
+    }
+
+    /** POST 表单，返回 JSON 响应。 */
+    suspend fun postForm(url: HttpUrl, form: Map<String, String>, referer: String? = null): JSONObject {
+        val body = FormBody.Builder().apply { form.forEach { (k, v) -> add(k, v) } }.build()
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", USER_AGENT)
+            .apply { if (referer != null) header("Referer", referer) }
+            .post(body)
+            .build()
+        return client.newCall(request).await().use { resp ->
+            if (!resp.isSuccessful) throw BiliHttpException(resp.code)
+            JSONObject(resp.body?.string() ?: throw IOException("empty body"))
+        }
+    }
+
+    /** GET 二进制内容（如弹幕 protobuf），返回 HTTP 状态码和响应体；不因非 2xx 抛异常。 */
+    suspend fun getBytes(url: HttpUrl, referer: String? = null): Pair<Int, ByteArray> {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", USER_AGENT)
+            .apply { if (referer != null) header("Referer", referer) }
+            .get()
+            .build()
+        return client.newCall(request).await().use { resp ->
+            resp.code to (resp.body?.bytes() ?: ByteArray(0))
         }
     }
 
@@ -142,7 +187,15 @@ class BiliCookieJar(private val prefs: SharedPreferences) : CookieJar {
         if (persist && name in PERSISTED) prefs.edit().putString(PREF_PREFIX + name, value).apply()
     }
 
-    fun get(name: String): String? = store.values.firstOrNull { it.name == name && it.value.isNotEmpty() }?.value
+    fun get(name: String): String? {
+        val now = System.currentTimeMillis()
+        return store.values.firstOrNull { it.name == name && it.value.isNotEmpty() && it.expiresAt > now }?.value
+    }
+
+    /** 删除某个名字的所有 Cookie（退出登录用） */
+    fun remove(name: String) {
+        store.keys.filter { it.startsWith("$name@") }.forEach { store.remove(it) }
+    }
 
     private companion object {
         const val PREF_PREFIX = "cookie_"
