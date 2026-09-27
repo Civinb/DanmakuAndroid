@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/panel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- 标题栏：按住拖动整个窗口 -->
+        <LinearLayout
+            android:id="@+id/title_bar"
+            android:layout_width="match_parent"
+            android:layout_height="32dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp">
+
+            <TextView
+                android:id="@+id/title_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#CCFFFFFF"
+                android:textSize="12sp" />
+
+            <ImageButton
+                android:id="@+id/btn_lock"
+                style="@style/OverlayIconButton"
+                android:contentDescription="@string/lock"
+                android:src="@drawable/ic_lock" />
+
+            <ImageButton
+                android:id="@+id/btn_collapse"
+                style="@style/OverlayIconButton"
+                android:contentDescription="@string/collapse"
+                android:src="@drawable/ic_minimize" />
+
+            <ImageButton
+                android:id="@+id/btn_close"
+                style="@style/OverlayIconButton"
+                android:contentDescription="@string/close"
+                android:src="@drawable/ic_close" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/danmaku_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="6dp"
+                android:scrollbars="vertical" />
+
+            <TextView
+                android:id="@+id/btn_jump_latest"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_jump_latest"
+                android:paddingStart="12dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="4dp"
+                android:textColor="#FFFFFFFF"
+                android:textSize="12sp"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- 右下角：按住拖动调整大小 -->
+    <ImageView
+        android:id="@+id/resize_handle"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="bottom|end"
+        android:alpha="0.7"
+        android:contentDescription="@string/resize"
+        android:padding="4dp"
+        android:src="@drawable/ic_resize" />
+</FrameLayout>
