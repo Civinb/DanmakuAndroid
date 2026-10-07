@@ -4,7 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
+import androidx.activity.BackEventCompat
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.civinb.danmuji.DanmuApp
+import kotlinx.coroutines.flow.Flow
 import com.civinb.danmuji.data.bili.link.LinkParser
 import com.civinb.danmuji.data.bili.link.LinkTarget
 import com.civinb.danmuji.service.OverlayService
@@ -78,6 +93,7 @@ enum class Screen(val title: String) {
     ACCOUNT("B 站账号"),
     GUIDE("权限与后台保活"),
     LOG("连接日志"),
+    ABOUT("关于与更新"),
 }
 
 @Composable
@@ -88,19 +104,99 @@ fun DanmujiTheme(content: @Composable () -> Unit) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppRoot() {
+    val context = LocalContext.current
+    val updates = remember { (context.applicationContext as DanmuApp).updates }
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
-    BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
 
+    // 预见式返回：子页面跟随返回手势缩小、平移，露出下面的首页；松手完成返回，滑回去则取消
+    var backProgress by remember { mutableFloatStateOf(0f) }
+    var backEdge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
+    var backActive by remember { mutableStateOf(false) }
+    PredictiveBackHandler(enabled = screen != Screen.HOME) { progress: Flow<BackEventCompat> ->
+        backActive = true
+        try {
+            progress.collect { e ->
+                backProgress = e.progress
+                backEdge = e.swipeEdge
+            }
+            screen = Screen.HOME
+        } finally {
+            // 完成或取消（CancellationException）都要复位
+            backActive = false
+            backProgress = 0f
+        }
+    }
+
+    // 打开应用时自动检查更新（每个进程一次）
+    LaunchedEffect(Unit) { updates.autoCheckOnce() }
+    val prompt by updates.prompt.collectAsStateWithLifecycle()
+    prompt?.let { release ->
+        AlertDialog(
+            onDismissRequest = { updates.dismissPrompt() },
+            title = { Text("发现新版本 ${release.tag}") },
+            text = {
+                Text(
+                    (if (release.notes.isNotBlank()) release.notes.trim().take(400) + "\n\n" else "") +
+                        "当前版本 ${updates.currentVersion}",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    updates.dismissPrompt()
+                    screen = Screen.ABOUT
+                }) { Text("查看") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { updates.skip(release) }) { Text("跳过此版本") }
+                    TextButton(onClick = { updates.dismissPrompt() }) { Text("以后再说") }
+                }
+            },
+        )
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        if (backActive && screen != Screen.HOME) {
+            // 手势进行中：在下面预先显示首页
+            ScreenScaffold(Screen.HOME, onNavigate = {})
+        }
+        ScreenScaffold(
+            screen = screen,
+            onNavigate = { screen = it },
+            modifier = Modifier.graphicsLayer {
+                val p = backProgress
+                if (p > 0f) {
+                    val scale = 1f - 0.1f * p
+                    scaleX = scale
+                    scaleY = scale
+                    val direction = if (backEdge == BackEventCompat.EDGE_LEFT) 1f else -1f
+                    translationX = direction * size.width * 0.05f * p
+                    shape = RoundedCornerShape((32f * p).dp)
+                    clip = true
+                    shadowElevation = 8f * p * density
+                }
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScreenScaffold(screen: Screen, onNavigate: (Screen) -> Unit, modifier: Modifier = Modifier) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text(screen.title) },
                 navigationIcon = {
                     if (screen != Screen.HOME) {
-                        TextButton(onClick = { screen = Screen.HOME }) { Text("返回") }
+                        TextButton(onClick = { onNavigate(Screen.HOME) }) { Text("返回") }
                     }
                 },
             )
@@ -112,12 +208,13 @@ fun AppRoot() {
                 .fillMaxSize(),
         ) {
             when (screen) {
-                Screen.HOME -> HomeScreen(onNavigate = { screen = it })
+                Screen.HOME -> HomeScreen(onNavigate = onNavigate)
                 Screen.STYLE -> StyleScreen()
                 Screen.FILTER -> FilterScreen()
                 Screen.ACCOUNT -> AccountScreen()
                 Screen.GUIDE -> GuideScreen()
                 Screen.LOG -> LogScreen()
+                Screen.ABOUT -> AboutScreen()
             }
         }
     }

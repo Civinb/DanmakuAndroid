@@ -144,6 +144,9 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             OutlinedButton(onClick = { onNavigate(Screen.LOG) }, modifier = Modifier.fillMaxWidth()) {
                 Text("连接日志（出问题时复制给开发者）")
             }
+            OutlinedButton(onClick = { onNavigate(Screen.ABOUT) }, modifier = Modifier.fillMaxWidth()) {
+                Text("关于与更新")
+            }
         }
     }
 }
