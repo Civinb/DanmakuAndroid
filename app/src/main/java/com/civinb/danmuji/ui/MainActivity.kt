@@ -86,14 +86,20 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-enum class Screen(val title: String) {
-    HOME("弹幕机"),
-    STYLE("悬浮窗样式"),
-    FILTER("过滤规则"),
-    ACCOUNT("B 站账号"),
-    GUIDE("权限与后台保活"),
-    LOG("连接日志"),
-    ABOUT("关于与更新"),
+/** 页面及其上一级（返回时回到 parent） */
+enum class Screen(val title: String, val parentName: String?) {
+    HOME("弹幕机", null),
+    SETTINGS("设置", "HOME"),
+    HELP("帮助与关于", "HOME"),
+    STYLE("悬浮窗样式", "SETTINGS"),
+    FILTER("过滤规则", "SETTINGS"),
+    ACCOUNT("B 站账号", "SETTINGS"),
+    GUIDE("权限与后台保活", "HELP"),
+    LOG("连接日志", "HELP"),
+    ABOUT("关于与更新", "HELP"),
+    ;
+
+    val parent: Screen get() = parentName?.let { Screen.valueOf(it) } ?: HOME
 }
 
 @Composable
@@ -110,7 +116,7 @@ fun AppRoot() {
     val updates = remember { (context.applicationContext as DanmuApp).updates }
     var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
 
-    // 预见式返回：子页面跟随返回手势缩小、平移，露出下面的首页；松手完成返回，滑回去则取消
+    // 预见式返回：子页面跟随返回手势缩小、平移，露出下面的上一级页面；松手完成返回，滑回去则取消
     var backProgress by remember { mutableFloatStateOf(0f) }
     var backEdge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
     var backActive by remember { mutableStateOf(false) }
@@ -121,7 +127,7 @@ fun AppRoot() {
                 backProgress = e.progress
                 backEdge = e.swipeEdge
             }
-            screen = Screen.HOME
+            screen = screen.parent
         } finally {
             // 完成或取消（CancellationException）都要复位
             backActive = false
@@ -163,8 +169,8 @@ fun AppRoot() {
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         if (backActive && screen != Screen.HOME) {
-            // 手势进行中：在下面预先显示首页
-            ScreenScaffold(Screen.HOME, onNavigate = {})
+            // 手势进行中：在下面预先显示上一级页面
+            ScreenScaffold(screen.parent, onNavigate = {})
         }
         ScreenScaffold(
             screen = screen,
@@ -196,7 +202,7 @@ private fun ScreenScaffold(screen: Screen, onNavigate: (Screen) -> Unit, modifie
                 title = { Text(screen.title) },
                 navigationIcon = {
                     if (screen != Screen.HOME) {
-                        TextButton(onClick = { onNavigate(Screen.HOME) }) { Text("返回") }
+                        TextButton(onClick = { onNavigate(screen.parent) }) { Text("返回") }
                     }
                 },
             )
@@ -209,6 +215,8 @@ private fun ScreenScaffold(screen: Screen, onNavigate: (Screen) -> Unit, modifie
         ) {
             when (screen) {
                 Screen.HOME -> HomeScreen(onNavigate = onNavigate)
+                Screen.SETTINGS -> SettingsMenuScreen(onNavigate = onNavigate)
+                Screen.HELP -> HelpMenuScreen(onNavigate = onNavigate)
                 Screen.STYLE -> StyleScreen()
                 Screen.FILTER -> FilterScreen()
                 Screen.ACCOUNT -> AccountScreen()

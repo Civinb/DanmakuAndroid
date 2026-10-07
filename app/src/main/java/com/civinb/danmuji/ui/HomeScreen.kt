@@ -118,7 +118,7 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             HintText(
                 "也可以在 B 站 App 直播间点“分享”，在系统分享面板里选“弹幕机”直接启动。\n" +
                     "未登录时 B 站会把其他用户的昵称打码（如“张**”），这是 B 站的规则。\n" +
-                    "醒目留言 / 礼物 / 进场消息默认不显示，可在“悬浮窗样式”里打开。",
+                    "醒目留言 / 礼物 / 进场消息默认不显示，可在“设置 → 悬浮窗样式”里打开。",
             )
         }
 
@@ -128,25 +128,14 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             onInputConsumed = { ShareInbox.video.value = null },
         )
 
-        SectionCard("更多") {
-            OutlinedButton(onClick = { onNavigate(Screen.STYLE) }, modifier = Modifier.fillMaxWidth()) {
-                Text("悬浮窗样式")
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = { onNavigate(Screen.SETTINGS) }, modifier = Modifier.weight(1f)) {
+                Text("设置")
             }
-            OutlinedButton(onClick = { onNavigate(Screen.ACCOUNT) }, modifier = Modifier.fillMaxWidth()) {
-                Text("B 站账号（扫码登录，可选）")
-            }
-            OutlinedButton(onClick = { onNavigate(Screen.FILTER) }, modifier = Modifier.fillMaxWidth()) {
-                Text("过滤规则（屏蔽 / 仅显示 / 合并重复）")
-            }
-            OutlinedButton(onClick = { onNavigate(Screen.GUIDE) }, modifier = Modifier.fillMaxWidth()) {
-                Text("权限与后台保活（国产 ROM 必看）")
-            }
-            OutlinedButton(onClick = { onNavigate(Screen.LOG) }, modifier = Modifier.fillMaxWidth()) {
-                Text("连接日志（出问题时复制给开发者）")
-            }
-            OutlinedButton(onClick = { onNavigate(Screen.ABOUT) }, modifier = Modifier.fillMaxWidth()) {
-                Text("关于与更新")
+            OutlinedButton(onClick = { onNavigate(Screen.HELP) }, modifier = Modifier.weight(1f)) {
+                Text("帮助与关于")
             }
         }
+        HintText("设置：悬浮窗样式、过滤规则、B 站账号　帮助与关于：权限与后台保活、连接日志、检查更新")
     }
 }

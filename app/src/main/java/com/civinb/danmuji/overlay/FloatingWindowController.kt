@@ -28,6 +28,7 @@ import com.civinb.danmuji.model.DanmakuKind
 import com.civinb.danmuji.settings.OverlaySettings
 import com.civinb.danmuji.settings.SettingsRepository
 import com.civinb.danmuji.video.AutoStatus
+import com.civinb.danmuji.video.MediaStatus
 import com.civinb.danmuji.video.SyncMode
 import com.civinb.danmuji.video.VideoUiState
 import kotlinx.coroutines.CoroutineScope
@@ -66,6 +67,11 @@ class FloatingWindowController(
         fun onVideoTogglePlay()
         fun onVideoNudge(deltaMs: Long)
         fun onVideoSeek(positionMs: Long)
+
+        /** 黑屏控制条：通过 B 站媒体会话控制播放；返回 false 表示没找到会话 / 不支持 */
+        fun onMediaTogglePlay(): Boolean
+        fun onMediaSeekBy(deltaMs: Long): Boolean
+        fun mediaStatus(): MediaStatus?
     }
 
     /**
@@ -92,6 +98,7 @@ class FloatingWindowController(
     private val panel: View = panelView.findViewById(R.id.panel)
     private val titleBar: View = panelView.findViewById(R.id.title_bar)
     private val titleText: TextView = panelView.findViewById(R.id.title_text)
+    private val btnBlackout: ImageButton = panelView.findViewById(R.id.btn_blackout)
     private val btnLock: ImageButton = panelView.findViewById(R.id.btn_lock)
     private val btnCollapse: ImageButton = panelView.findViewById(R.id.btn_collapse)
     private val btnClose: ImageButton = panelView.findViewById(R.id.btn_close)
@@ -124,6 +131,18 @@ class FloatingWindowController(
     // ---------- 锁定时的解锁按钮 ----------
     private val unlockView: ImageView = createUnlockButton()
     private val unlockParams = newParams()
+
+    // 黑屏背景（不持久化：每次启动悬浮窗都是关闭状态）
+    private var blackout = false
+    private val blackoutLayer = BlackoutLayer(
+        themed,
+        object : BlackoutLayer.Callbacks {
+            override fun onExitBlackout() = setBlackout(false)
+            override fun onTogglePlay(): Boolean = listener.onMediaTogglePlay()
+            override fun onSeekBy(deltaMs: Long): Boolean = listener.onMediaSeekBy(deltaMs)
+            override fun mediaStatus(): MediaStatus? = listener.mediaStatus()
+        },
+    )
 
     private val adapter = DanmakuAdapter()
     private var followLatest = true
@@ -293,9 +312,35 @@ class FloatingWindowController(
         refreshWindows()
     }
 
+    val isBlackout: Boolean get() = blackout
+
+    /**
+     * 打开 / 关闭黑屏背景。黑色窗口必须在弹幕面板下面：同一应用的悬浮窗按添加顺序叠放，
+     * 所以先撤下面板等窗口，加上黑色窗口，再把它们按当前状态加回去。
+     */
+    fun setBlackout(on: Boolean) {
+        if (blackout == on || destroyed) return
+        blackout = on
+        if (on) {
+            detach(unlockView)
+            detach(bubbleView)
+            detach(panelView)
+            attachOrUpdate(blackoutLayer.view, blackoutLayer.params)
+            blackoutLayer.onShown()
+            refreshWindows()
+        } else {
+            blackoutLayer.onHidden()
+            detach(blackoutLayer.view)
+        }
+        if (on) btnBlackout.setColorFilter(BLACKOUT_ON_TINT) else btnBlackout.clearColorFilter()
+        listener.onWindowStateChanged()
+    }
+
     fun destroy() {
         destroyed = true
         panelView.removeCallbacks(hideActionBar)
+        blackoutLayer.onHidden()
+        detach(blackoutLayer.view)
         detach(unlockView)
         detach(bubbleView)
         detach(panelView)
@@ -359,6 +404,7 @@ class FloatingWindowController(
             actionTarget?.let { listener.onBlockText(it) }
             hideActions()
         }
+        btnBlackout.setOnClickListener { setBlackout(!blackout) }
         btnLock.setOnClickListener { setLocked(true) }
         btnCollapse.setOnClickListener { setCollapsed(true) }
         btnClose.setOnClickListener { listener.onCloseRequested() }
@@ -709,5 +755,6 @@ class FloatingWindowController(
         const val MIN_WIDTH_DP = 140
         const val MIN_HEIGHT_DP = 100
         const val ACTION_BAR_TIMEOUT_MS = 8_000L
+        const val BLACKOUT_ON_TINT = 0xFF66B3FF.toInt()
     }
 }

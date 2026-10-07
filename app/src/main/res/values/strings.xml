@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">弹幕机</string>
     <string name="probe_listener_label">弹幕机 · 视频进度同步</string>
+    <string name="blackout">黑屏背景</string>
     <string name="lock">锁定（触摸穿透）</string>
     <string name="unlock">解锁</string>
     <string name="collapse">折叠</string>

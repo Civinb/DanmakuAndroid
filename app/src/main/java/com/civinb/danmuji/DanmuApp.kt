@@ -11,6 +11,7 @@ import com.civinb.danmuji.settings.SettingsRepository
 import com.civinb.danmuji.update.UpdateManager
 import com.civinb.danmuji.util.DebugLog
 import com.civinb.danmuji.util.NetworkMonitor
+import com.civinb.danmuji.video.MediaRemote
 import com.civinb.danmuji.video.MediaSessionReader
 import com.civinb.danmuji.video.VideoSync
 
@@ -28,6 +29,8 @@ class DanmuApp : Application() {
         private set
     lateinit var updates: UpdateManager
         private set
+    lateinit var mediaRemote: MediaRemote
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -38,6 +41,7 @@ class DanmuApp : Application() {
         network = NetworkMonitor(this)
         val sessionReader = MediaSessionReader(this)
         videoSync = VideoSync(reader = { sessionReader.read() }, now = { SystemClock.elapsedRealtime() })
+        mediaRemote = MediaRemote(sessionReader)
         updates = UpdateManager(this)
         createNotificationChannels()
     }

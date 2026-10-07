@@ -24,16 +24,7 @@ class MediaSessionReader(context: Context) {
     @Synchronized
     fun read(): AutoReading {
         val now = SystemClock.elapsedRealtime()
-        if (cached == null || now - lastRefresh > REFRESH_MS) {
-            val list = try {
-                msm?.getActiveSessions(component) ?: emptyList()
-            } catch (e: SecurityException) {
-                cached = null
-                return AutoReading.NoPermission
-            }
-            cached = list.firstOrNull { isBilibili(it.packageName) }
-            lastRefresh = now
-        }
+        if (!refreshIfNeeded(now)) return AutoReading.NoPermission
         val c = cached ?: return AutoReading.NoSession
         val ps: PlaybackState = c.playbackState ?: return AutoReading.NoSession
         when (ps.state) {
@@ -55,6 +46,27 @@ class MediaSessionReader(context: Context) {
             title = md?.getString(MediaMetadata.METADATA_KEY_TITLE),
             durationMs = md?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L,
         )
+    }
+
+    /** B 站 App 的媒体会话控制器（黑屏模式的播放控制用）；没有权限或没有会话时为 null */
+    @Synchronized
+    fun controller(): MediaController? {
+        if (!refreshIfNeeded(SystemClock.elapsedRealtime())) return null
+        return cached
+    }
+
+    /** 需要时刷新会话列表；没有通知使用权时返回 false */
+    private fun refreshIfNeeded(now: Long): Boolean {
+        if (cached != null && now - lastRefresh <= REFRESH_MS) return true
+        val list = try {
+            msm?.getActiveSessions(component) ?: emptyList()
+        } catch (e: SecurityException) {
+            cached = null
+            return false
+        }
+        cached = list.firstOrNull { isBilibili(it.packageName) }
+        lastRefresh = now
+        return true
     }
 
     private fun isBilibili(pkg: String) = pkg.startsWith("tv.danmaku.bili") || pkg.startsWith("com.bilibili")

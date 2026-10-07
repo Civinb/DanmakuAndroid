@@ -29,6 +29,12 @@
                 android:textSize="12sp" />
 
             <ImageButton
+                android:id="@+id/btn_blackout"
+                style="@style/OverlayIconButton"
+                android:contentDescription="@string/blackout"
+                android:src="@drawable/ic_blackout" />
+
+            <ImageButton
                 android:id="@+id/btn_lock"
                 style="@style/OverlayIconButton"
                 android:contentDescription="@string/lock"

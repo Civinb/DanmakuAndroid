@@ -37,6 +37,7 @@ import com.civinb.danmuji.source.InputDanmakuSource
 import com.civinb.danmuji.source.SourceEvent
 import com.civinb.danmuji.ui.MainActivity
 import com.civinb.danmuji.util.DebugLog
+import com.civinb.danmuji.video.MediaStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -150,6 +151,9 @@ class OverlayService : Service() {
             override fun onVideoTogglePlay() = (application as DanmuApp).videoSync.togglePlay()
             override fun onVideoNudge(deltaMs: Long) = (application as DanmuApp).videoSync.nudge(deltaMs)
             override fun onVideoSeek(positionMs: Long) = (application as DanmuApp).videoSync.seek(positionMs)
+            override fun onMediaTogglePlay(): Boolean = (application as DanmuApp).mediaRemote.togglePlay()
+            override fun onMediaSeekBy(deltaMs: Long): Boolean = (application as DanmuApp).mediaRemote.seekBy(deltaMs)
+            override fun mediaStatus(): MediaStatus? = (application as DanmuApp).mediaRemote.status()
         })
         controller = c
         c.setTitle(statusText)
