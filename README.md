@@ -1,27 +1,27 @@
-# Bilibili弹幕机（Android）
+# Bilibili Danmaku Viewer (Android)
 
-简体中文 | [English](README.en.md)
+[简体中文](README.zh-CN.md) | English
 
-本弹幕机可以用于视频内容不那么重要但是又想去看看弹幕反应的场合，
-以悬浮窗列表的形式显示 B 站直播 / 视频弹幕，配合 B 站官方 App 使用。
-
-
-## 功能
-
-- **直播弹幕**：房间号 / 链接 / 分享启动；醒目留言、礼物、进场可开关；隐藏直播间表情；断线自动重连
-- **视频弹幕**：BV 号 / 链接，支持多P；自动跟随 B 站播放进度，也可手动控制；切换分P自动切换弹幕
-- **悬浮窗**：拖动、缩放、锁定穿透、折叠、回到最新、样式可调；黑屏背景（点黑色区域弹出播放控制）
-- **过滤**：关键词、正则、用户屏蔽；仅显示模式；合并重复弹幕
-- **其他**：可选扫码登录、应用内检查更新
-- **注意**：观看视频弹幕时只有登陆后才能显示完整弹幕，未登录弹幕量只有约10%-20%
-## 使用
-
-1. 从 [Releases](https://github.com/Civinb/DanmakuAndroid/releases) 下载安装，授予悬浮窗权限
-2. 看直播：首页输入房间号或链接 → 连接
-3. 看视频：首页输入 BV 号或链接 → 加载 → 选分P → 开始，然后在 B 站 App 里播放同一个视频（自动同步需要开启“通知使用权”）
-4. 直播和视频都支持在直播间或视频页面点击分享->更多->弹幕机快捷启动（推荐）
+This danmaku viewer is meant for times when the video itself isn't that important but you still want to see how viewers react in the danmaku (bullet comments).
+It shows Bilibili live / video danmaku as a list in a floating window, used alongside the official Bilibili app.
 
 
-## 声明
-- 本项目全部由Claude code完成
-- 本项目仅供个人学习和使用。B 站接口随时可能变化而导致功能失效。
+## Features
+
+- **Live danmaku**: start from a room number, link, or share; Super Chats, gifts, and entry messages can each be toggled; hide live-room emotes; automatic reconnection after disconnects
+- **Video danmaku**: BV ID / link, multi-part videos supported; automatically follows Bilibili's playback progress, or control it manually; switches danmaku automatically when you change parts
+- **Floating window**: drag, resize, lock with touch pass-through, collapse, jump to latest, adjustable style; blackout background (tap the black area to bring up playback controls)
+- **Filters**: block by keyword, regex, or user; show-only mode; merge duplicate danmaku
+- **Other**: optional QR-code login, in-app update check
+- **Note**: when watching video danmaku, the full danmaku is only shown after logging in; without logging in you get only about 10%–20% of the danmaku
+## Usage
+
+1. Download and install from [Releases](https://github.com/Civinb/DanmakuAndroid/releases), and grant the floating-window (display over other apps) permission
+2. Live: enter a room number or link on the home screen → Connect
+3. Video: enter a BV ID or link on the home screen → Load → choose a part → Start, then play the same video in the Bilibili app (automatic sync requires enabling "Notification access")
+4. Both live and video support quick start from the live room or video page: tap Share → More → 弹幕机 (recommended)
+
+
+## Disclaimer
+- This project was built entirely with Claude Code
+- This project is for personal study and use only. Bilibili's APIs may change at any time and break functionality.
