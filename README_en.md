@@ -1,6 +1,6 @@
 # Bilibili Danmaku Viewer (Android)
 
-[简体中文](README.zh-CN.md) | English
+[简体中文](README.md) | English
 
 This danmaku viewer is meant for times when the video itself isn't that important but you still want to see how viewers react in the danmaku (bullet comments).
 It shows Bilibili live / video danmaku as a list in a floating window, used alongside the official Bilibili app.
