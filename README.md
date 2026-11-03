@@ -1,6 +1,6 @@
 # Bilibili弹幕机（Android）
 
-简体中文 | [English](README.md)
+简体中文 | [English](README_en.md)
 
 本弹幕机可以用于视频内容不那么重要但是又想去看看弹幕反应的场合，
 以悬浮窗列表的形式显示 B 站直播 / 视频弹幕，配合 B 站官方 App 使用。
