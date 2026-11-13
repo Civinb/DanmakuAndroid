@@ -2,8 +2,10 @@ package com.civinb.danmuji.overlay
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.PixelFormat
 import android.graphics.Point
+import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.hardware.display.DisplayManager
 import android.os.Build
@@ -15,6 +17,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -453,6 +456,10 @@ class FloatingWindowController(
             // 横屏全屏看视频时允许放到刘海一侧
             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // 坐标原点固定为屏幕左上角，系统栏的避让由 safeArea() 统一处理
+            setFitInsetsTypes(0)
+        }
     }
 
     // ================= 窗口状态 =================
@@ -633,14 +640,60 @@ class FloatingWindowController(
         }
     }
 
-    private fun clamp(p: WindowManager.LayoutParams) {
+    /**
+     * 悬浮窗可以放置的区域（屏幕坐标）：扣掉顶部状态栏 / 刘海、底部导航栏 / 手势条，
+     * 以及横屏时放在侧边的导航栏。这些区域的触摸会被系统拿走（下拉通知栏、回到桌面），
+     * 窗口的标题栏或缩放手柄落在里面就拖不动了。
+     * 状态栏暂时隐藏（如 B 站全屏播放）时也照样避让，避免窗口随系统栏显隐跳动。
+     * 左右两侧的返回手势区不避让，否则窗口无法贴边。
+     */
+    private fun safeArea(): Rect {
         val screen = screenSize()
-        if (p.width > screen.x) p.width = screen.x
-        if (p.height > screen.y) p.height = screen.y
+        var top = 0
+        var bottom = 0
+        var left = 0
+        var right = 0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val insets = wm.currentWindowMetrics.windowInsets
+            val bars = insets.getInsetsIgnoringVisibility(
+                WindowInsets.Type.statusBars() or WindowInsets.Type.displayCutout(),
+            )
+            val nav = insets.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars())
+            val gestures = insets.getInsetsIgnoringVisibility(WindowInsets.Type.mandatorySystemGestures())
+            top = maxOf(bars.top, gestures.top)
+            bottom = maxOf(nav.bottom, gestures.bottom)
+            left = nav.left
+            right = nav.right
+        }
+        // 低版本，或个别系统没有通过 WindowMetrics 报告系统栏时，退回系统资源里的尺寸
+        if (top == 0) top = systemDimen("status_bar_height")
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && screen.y > screen.x) {
+            bottom = systemDimen("navigation_bar_height")
+        }
+        val rect = Rect(left, top, screen.x - right, screen.y - bottom)
+        // 防御：区域异常（例如系统报告的值不合理）时不做避让
+        return if (rect.width() < dp(MIN_WIDTH_DP) || rect.height() < dp(MIN_HEIGHT_DP)) {
+            Rect(0, 0, screen.x, screen.y)
+        } else {
+            rect
+        }
+    }
+
+    private fun systemDimen(name: String): Int {
+        val res = Resources.getSystem()
+        @SuppressLint("DiscouragedApi")
+        val id = res.getIdentifier(name, "dimen", "android")
+        return if (id > 0) res.getDimensionPixelSize(id) else 0
+    }
+
+    private fun clamp(p: WindowManager.LayoutParams) {
+        val area = safeArea()
+        if (p.width > area.width()) p.width = area.width()
+        if (p.height > area.height()) p.height = area.height()
         val w = max(p.width, 0)
         val h = max(p.height, 0)
-        p.x = p.x.coerceIn(0, max(0, screen.x - w))
-        p.y = p.y.coerceIn(0, max(0, screen.y - h))
+        p.x = p.x.coerceIn(area.left, max(area.left, area.right - w))
+        p.y = p.y.coerceIn(area.top, max(area.top, area.bottom - h))
     }
 
     private fun dp(v: Float): Int = (v * density).roundToInt()
@@ -718,11 +771,14 @@ class FloatingWindowController(
                     interacting = true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val screen = screenSize()
+                    val area = safeArea()
                     val minW = dp(MIN_WIDTH_DP)
                     val minH = dp(MIN_HEIGHT_DP)
-                    panelParams.width = (startW + (event.rawX - downX).roundToInt()).coerceIn(minW, max(minW, screen.x))
-                    panelParams.height = (startH + (event.rawY - downY).roundToInt()).coerceIn(minH, max(minH, screen.y))
+                    // 只往右下扩展，不能超出可放置区域的右边 / 下边
+                    val maxW = max(minW, area.right - panelParams.x)
+                    val maxH = max(minH, area.bottom - panelParams.y)
+                    panelParams.width = (startW + (event.rawX - downX).roundToInt()).coerceIn(minW, maxW)
+                    panelParams.height = (startH + (event.rawY - downY).roundToInt()).coerceIn(minH, maxH)
                     clamp(panelParams)
                     safeUpdate(panelView, panelParams)
                 }
