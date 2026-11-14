@@ -60,7 +60,6 @@ fun StyleScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        HintText(tr("修改后悬浮窗会立即生效（悬浮窗运行时可以边看边调）。", "Changes apply to the overlay immediately (you can adjust while watching)."))
 
         SectionCard(tr("外观", "Appearance")) {
             SettingSlider(tr("背景不透明度", "Background opacity"), s.bgAlpha, 0f..1f, 19, { "${(it * 100).roundToInt()}%" }) { v ->
@@ -94,16 +93,13 @@ fun StyleScreen() {
                     )
                 }
             }
-            SwitchRow(tr("显示用户名", "Show usernames"), s.showUserName, tr("视频弹幕本身不带用户名，此项只对直播生效", "Video danmaku have no usernames; this only affects live")) { v ->
+            SwitchRow(tr("显示用户名", "Show usernames"), s.showUserName) { v ->
                 update { it.copy(showUserName = v) }
             }
         }
 
         SectionCard(tr("锁定模式", "Lock mode")) {
-            HintText(
-                tr("锁定后悬浮窗不接收触摸，操作会传到下层 App。", "When locked, the overlay ignores touches and they go to the app underneath. ") +
-                    tr("Android 12 及以上系统要求穿透窗口不透明度不超过 80%，所以锁定时整体会略微变淡。", "Android 12+ requires pass-through windows to be at most 80% opaque, so the overlay looks slightly faded when locked."),
-            )
+            HintText(tr("锁定时窗口会略微变淡（系统限制）。", "The window looks slightly faded when locked (system limitation)."))
             SwitchRow(tr("锁定时显示小解锁按钮", "Show a small unlock button when locked"), s.showUnlockButton, tr("关闭后只能从通知栏解锁", "If off, unlock only from the notification")) { v ->
                 update { it.copy(showUnlockButton = v) }
             }
@@ -113,20 +109,17 @@ fun StyleScreen() {
             SwitchRow(
                 tr("隐藏直播间表情", "Hide live-room emotes"),
                 s.hideEmotes,
-                tr("整条表情弹幕不显示；文字里的 [表情] 去掉，只留文字。Unicode emoji 不受影响。只对之后收到的弹幕生效。", "Emote-only danmaku are hidden; [emote] tags in text are removed, leaving the text. Unicode emoji are unaffected. Applies only to danmaku received afterwards."),
             ) { v -> update { it.copy(hideEmotes = v) } }
             SwitchRow(
                 tr("视频弹幕显示时间点", "Show time in video danmaku"),
                 s.showVideoTime,
-                tr("在每条视频弹幕前显示它在视频中的时间（如 12:34），方便核对同步是否准确。", "Shows each video danmaku's time in the video (e.g. 12:34) before it, to check whether sync is accurate."),
             ) { v -> update { it.copy(showVideoTime = v) } }
         }
 
         SectionCard(tr("直播附加消息", "Extra live messages")) {
-            HintText(tr("默认只显示普通弹幕。", "Only regular danmaku are shown by default."))
             SwitchRow(tr("醒目留言（SC）", "Super Chat (SC)"), s.showSuperChat) { v -> update { it.copy(showSuperChat = v) } }
             SwitchRow(tr("礼物", "Gifts"), s.showGift) { v -> update { it.copy(showGift = v) } }
-            SwitchRow(tr("进场与互动（关注、分享等）", "Entries & interactions (follows, shares, etc.)"), s.showEnter) { v -> update { it.copy(showEnter = v) } }
+            SwitchRow(tr("进场与互动", "Entries & interactions"), s.showEnter) { v -> update { it.copy(showEnter = v) } }
         }
 
         SectionCard(tr("重置", "Reset")) {

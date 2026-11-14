@@ -35,7 +35,7 @@ fun LogScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        HintText(tr("记录连接过程（不含 Cookie 等敏感信息）。连不上或经常断线时，点“复制”发给开发者。", "Records the connection process (no cookies or other sensitive data). If you can't connect or keep getting disconnected, tap \"Copy\" and send it to the developer."))
+        HintText(tr("不含 Cookie 等敏感信息。", "Contains no cookies or other sensitive data."))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = {
                 val cm = context.getSystemService(ClipboardManager::class.java)

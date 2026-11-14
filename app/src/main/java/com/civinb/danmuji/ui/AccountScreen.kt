@@ -141,11 +141,7 @@ fun AccountScreen() {
                     }) { Text(tr("退出登录", "Log out")) }
                 }
             }
-            HintText(
-                tr("登录的目的：未登录时部分视频的弹幕接口只返回部分弹幕；直播弹幕昵称未登录会打码（登录后是否完整显示请以实测为准）。", "Why log in: without login, the danmaku API returns only part of the danmaku for some videos, and live usernames are masked (whether login fully unmasks them is to be confirmed in practice). ") +
-                    tr("不会在本应用输入账号密码；登录凭证用系统密钥库（Android Keystore）加密后只保存在本机，", "Your password is never entered in this app; login credentials are encrypted with the system keystore (Android Keystore) and stored only on this device. ") +
-                    tr("退出登录会通知 B 站注销该会话并删除本地凭证。", "Logging out tells Bilibili to end the session and deletes the local credentials."),
-            )
+            HintText(tr("未登录时部分视频只能拿到一部分弹幕。只支持扫码登录，凭证加密保存在本机。", "Without login some videos only return part of the danmaku. Only QR login is supported; credentials are encrypted and stored on this device."))
         }
 
         if (!loggedInLocally) {
@@ -169,12 +165,7 @@ fun AccountScreen() {
                     }, enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) { Text(tr("保存二维码到相册", "Save QR code to gallery")) }
                 }
                 if (qrState.isNotEmpty()) Text(qrState, color = MaterialTheme.colorScheme.primary)
-                HintText(
-                    tr("扫码要用 B 站 App，而二维码显示在这台手机上，可以：\n", "Scanning needs the Bilibili app, but the QR code is on this phone. You can:\n") +
-                        tr("① 点“保存二维码到相册”，再在这台手机 B 站 App 的“扫一扫”里选择相册中的这张图片（B 站 App 是否支持从相册识别，我没有实测）；\n", "① Tap \"Save QR code to gallery\", then in this phone's Bilibili app use \"Scan\" and pick the image from the gallery (I haven't verified that the Bilibili app supports scanning from the gallery);\n") +
-                        tr("② 或用另一部登录了同一账号的手机 / 平板上的 B 站 App，直接扫描本屏幕。\n", "② Or scan this screen with the Bilibili app on another phone / tablet logged in to the same account.\n") +
-                        tr("二维码过一段时间会过期，过期后点“刷新二维码”。", "The QR code expires after a while; tap \"Refresh QR code\" when it does."),
-                )
+                HintText(tr("可保存到相册后用 B 站“扫一扫”从相册识别，或用另一台设备扫码。", "Save it to the gallery and use \"Scan\" in the Bilibili app to pick it from the gallery, or scan it with another device."))
             }
         }
     }

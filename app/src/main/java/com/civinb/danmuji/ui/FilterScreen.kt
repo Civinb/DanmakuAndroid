@@ -65,18 +65,10 @@ fun FilterScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        HintText(
-            tr("规则修改后立即生效。新增屏蔽规则时，悬浮窗里已显示的匹配弹幕也会被移除。", "Changes take effect immediately. When you add a block rule, matching danmaku already shown in the overlay are removed too.") +
-                tr("也可以在悬浮窗里长按某条弹幕，选择“屏蔽此用户 / 屏蔽这句”。本次连接已过滤 $filtered 条。", "You can also long-press a danmaku in the overlay and choose \"Block this user / Block this text\". Filtered $filtered in this connection."),
-        )
+        HintText(tr("悬浮窗里长按弹幕也可以屏蔽。本次已过滤 $filtered 条。", "You can also long-press a danmaku in the overlay to block it. Filtered $filtered so far."))
 
         SectionCard(tr("屏蔽规则（${blockRules.size}）", "Block rules (${blockRules.size})")) {
-            HintText(
-                tr("关键词：包含即屏蔽，不区分大小写。\n", "Keyword: blocks if contained, case-insensitive.\n") +
-                    tr("正则：Java 正则语法，需要不区分大小写可在开头加 (?i)。\n", "Regex: Java regex syntax; add (?i) at the start for case-insensitive.\n") +
-                    tr("用户：填用户名或 UID。注意未登录时 B 站把昵称打码（如“张**”）、UID 为 0，", "User: username or UID. Note that without login Bilibili masks names (e.g. \"张**\") and UID is 0, ") +
-                    tr("按打码名字屏蔽会同时屏蔽所有同样打码的用户。", "so blocking a masked name also blocks every user with the same masked name."),
-            )
+            HintText(tr("未登录时昵称被打码，按用户屏蔽会误伤同名的人。", "Without login names are masked, so blocking a user may also block others with the same masked name."))
             RuleEditor(onAdd = { type, pattern -> add(type, RuleAction.BLOCK, pattern) })
             RuleList(
                 rules = blockRules,
@@ -89,7 +81,6 @@ fun FilterScreen() {
             SwitchRow(
                 tr("只显示命中下面规则的弹幕", "Only show danmaku matching the rules below"),
                 s.onlyMode,
-                tr("例如只看同传：添加关键词“【同传】”，或正则 ^【.*】。只作用于普通弹幕，醒目留言/礼物/进场仍由各自开关决定。", "E.g. to see only live translations: add the keyword \"【同传】\" or the regex ^【.*】. Applies only to regular danmaku; Super Chats / gifts / entries follow their own toggles."),
             ) { v -> update { it.copy(onlyMode = v) } }
             if (s.onlyMode && onlyRules.none { it.enabled }) {
                 Text(tr("当前没有启用的“仅显示”规则，普通弹幕将全部不显示。", "No show-only rules are enabled, so no regular danmaku will be shown."), color = MaterialTheme.colorScheme.error)
@@ -106,7 +97,6 @@ fun FilterScreen() {
             SwitchRow(
                 tr("合并短时间内的相同弹幕", "Merge identical danmaku within a short time"),
                 s.mergeDuplicates,
-                tr("时间窗口内内容相同的弹幕只显示一行，末尾显示 ×N（忽略大小写和首尾空格）。", "Identical danmaku within the time window are shown as one line with ×N at the end (ignoring case and leading/trailing spaces)."),
             ) { v -> update { it.copy(mergeDuplicates = v) } }
             SettingSlider(tr("时间窗口", "Time window"), s.mergeWindowSec.toFloat(), 3f..60f, 56, { tr("${it.roundToInt()} 秒", "${it.roundToInt()} s") }) { v ->
                 update { it.copy(mergeWindowSec = v.roundToInt()) }

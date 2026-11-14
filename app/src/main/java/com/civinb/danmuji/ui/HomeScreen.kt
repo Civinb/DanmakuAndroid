@@ -87,20 +87,15 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
                 Permissions.open(context, Permissions.overlaySettingsIntent(context))
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                StatusRow(tr("通知权限（显示运行状态和锁定/解锁按钮）", "Notifications (shows status and lock/unlock buttons)"), notificationGranted, if (notificationGranted) null else tr("授权", "Allow")) {
+                StatusRow(tr("通知权限", "Notifications"), notificationGranted, if (notificationGranted) null else tr("授权", "Allow")) {
                     notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
-            HintText(tr("通知权限被拒绝时服务仍可运行，但通知栏里不会出现“解锁/停止”按钮。", "If notifications are denied the service still runs, but the notification won't have the Unlock/Stop buttons."))
             StatusRow(tr("通知使用权（视频自动同步需要）", "Notification access (needed for video auto sync)"), listenerEnabled, if (listenerEnabled) null else tr("去开启", "Enable")) {
                 Permissions.open(context, Permissions.notificationListenerSettingsIntent())
             }
             if (!listenerEnabled) {
-                HintText(
-                    tr("本应用不读取任何通知内容，只用它获得读取 B 站播放进度的资格。", "This app doesn't read any notification content; it only uses this to be allowed to read Bilibili's playback progress. ") +
-                        tr("如果开关是灰色、提示“受限制的设置”：到 应用信息 → 右上角 ⋮ → “允许受限制的设置”，", "If the switch is grayed out with \"Restricted setting\": go to App info → ⋮ (top right) → \"Allow restricted settings\", ") +
-                        tr("再回来开启（Android 13+ 对不是从应用商店安装的 App 有此限制）。", "then come back and enable it (Android 13+ restricts apps not installed from an app store)."),
-                )
+                HintText(tr("开关是灰色时：应用信息 → 右上角 ⋮ → 允许受限制的设置", "If the switch is grayed out: App info → ⋮ (top right) → Allow restricted settings"))
             }
         }
 
@@ -127,12 +122,7 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
                 }) { Text(tr("粘贴", "Paste")) }
                 OutlinedButton(onClick = { OverlayService.stop(context) }, enabled = running) { Text(tr("停止", "Stop")) }
             }
-            HintText(
-                tr("推荐在 B 站 App 的直播间或视频页点“分享 → 更多”，选“弹幕机”直接启动。\n", "Recommended: in a Bilibili live room or video page, tap \"Share → More\" and pick this app to start directly.\n") +
-                    tr("视频：链接带 ?p=N 时从该分P开始，否则从 P1 开始；在 B 站 App 里切换分P会自动跟随。", "Video: starts from part N if the link has ?p=N, otherwise from P1; switching parts in the Bilibili app is followed automatically. ") +
-                    tr("悬浮窗控制条上“自动/手动”切换进度同步方式，−5/−1/+1/+5 微调弹幕时间。\n", "On the overlay, \"Auto/Manual\" switches how progress is synced, and −5/−1/+1/+5 fine-tune the danmaku timing.\n") +
-                    tr("直播：醒目留言 / 礼物 / 进场消息默认不显示，可在“设置 → 悬浮窗样式”里打开；未登录时他人昵称会被打码。", "Live: Super Chats / gifts / entry messages are hidden by default (turn them on in \"Settings → Overlay style\"); without login other users' names are masked."),
-            )
+            HintText(tr("推荐在 B 站 App 的直播间或视频页点“分享 → 更多”，选“弹幕机”直接启动。", "Recommended: in a Bilibili live room or video page, tap \"Share → More\" and pick this app to start directly."))
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -143,6 +133,5 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
                 Text(tr("帮助与关于", "Help & about"))
             }
         }
-        HintText(tr("设置：悬浮窗样式、过滤规则、B 站账号　帮助与关于：权限与后台保活、连接日志、检查更新", "Settings: overlay style, filters, Bilibili account    Help & about: permissions & background, connection log, updates"))
     }
 }

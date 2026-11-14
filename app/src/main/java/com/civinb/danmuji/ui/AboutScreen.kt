@@ -52,7 +52,7 @@ fun AboutScreen() {
         }
 
         SectionCard(tr("检查更新", "Updates")) {
-            SwitchRow(tr("打开应用时自动检查", "Check automatically when the app opens"), autoCheck, tr("有新版本才会弹出提示", "Only shows a prompt when there's a new version")) {
+            SwitchRow(tr("打开应用时自动检查", "Check automatically when the app opens"), autoCheck) {
                 autoCheck = it
                 updates.autoCheck = it
             }
@@ -121,11 +121,7 @@ fun AboutScreen() {
             OutlinedButton(onClick = { openUrl(context, release?.pageUrl?.ifBlank { null } ?: UpdateManager.RELEASES_URL) }) {
                 Text(tr("在浏览器打开发布页", "Open release page in browser"))
             }
-            HintText(
-                tr("更新包来自 GitHub 仓库的 Releases（只看正式版，不含预发布）。", "Updates come from the GitHub repository's Releases (stable only, no pre-releases). ") +
-                    tr("下载后由系统安装器安装，需要你点“安装”确认；第一次会要求允许本应用“安装未知应用”。\n", "After downloading, the system installer installs it and you need to tap \"Install\"; the first time you'll be asked to allow this app to \"Install unknown apps\".\n") +
-                    tr("只有签名相同、versionCode 更高的安装包才能覆盖安装。GitHub 访问慢或失败时，可以用上面的按钮在浏览器里手动下载。", "Only packages with the same signature and a higher versionCode can update the app. If GitHub is slow or fails, use the button above to download manually in a browser."),
-            )
+            HintText(tr("第一次安装需要允许本应用“安装未知应用”。下载慢时可在浏览器打开发布页下载。", "The first install requires allowing this app to \"Install unknown apps\". If downloading is slow, open the release page in a browser."))
         }
     }
 }

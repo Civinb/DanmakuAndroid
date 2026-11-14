@@ -1,7 +1,6 @@
 package com.civinb.danmuji.ui
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -59,21 +58,6 @@ fun LanguageScreen() {
                     Text(label, Modifier.padding(start = 8.dp))
                 }
             }
-            HintText(
-                tr("跟随系统时：系统语言是中文就显示中文，其他语言显示英文。", "Follow system: Chinese if the system language is Chinese, otherwise English.") +
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        tr(
-                            "\n也可以在系统设置 → 应用 → 本应用 → 语言 里修改，两边是同一个设置。",
-                            "\nYou can also change it in system Settings → Apps → this app → Language; it's the same setting.",
-                        )
-                    } else {
-                        ""
-                    } +
-                    tr(
-                        "\n正在显示的悬浮窗里已有的文字不会立即改变，新的提示和下次启动会使用新语言。",
-                        "\nText already shown in a running overlay won't change immediately; new messages and the next start use the new language.",
-                    ),
-            )
         }
     }
 }

@@ -90,10 +90,7 @@ fun GuideScreen() {
             )
         }
 
-        HintText(
-            tr("以上菜单名称会随系统版本变化，这里只写了大致位置，我没有逐个机型核实。", "Menu names change with system versions; these are only approximate locations and haven't been verified on every model. ") +
-                tr("如果你的手机找不到对应项，告诉我机型和系统版本，我再调整说明。", "If you can't find an item on your phone, report your model and system version so the instructions can be updated."),
-        )
+        HintText(tr("菜单名称因系统版本不同可能略有差异。", "Menu names may differ slightly between system versions."))
     }
 }
 
