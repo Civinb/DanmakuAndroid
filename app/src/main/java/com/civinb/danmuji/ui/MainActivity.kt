@@ -39,8 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.civinb.danmuji.DanmuApp
 import kotlinx.coroutines.flow.Flow
-import com.civinb.danmuji.data.bili.link.LinkParser
-import com.civinb.danmuji.data.bili.link.LinkTarget
 import com.civinb.danmuji.service.OverlayService
 import com.civinb.danmuji.util.LanguageManager
 import com.civinb.danmuji.util.LastInput
@@ -74,14 +72,10 @@ class MainActivity : ComponentActivity() {
         if (i.action != Intent.ACTION_SEND) return
         val text = i.getStringExtra(Intent.EXTRA_TEXT)?.trim().orEmpty()
         if (text.isEmpty()) return
-        if (LinkParser.parse(text) is LinkTarget.Video) {
-            ShareInbox.video.value = text
-        } else {
-            LastInput.save(this, text)
-            ShareInbox.text.value = text
-        }
+        LastInput.save(this, text)
+        ShareInbox.text.value = text
         if (!Permissions.canDrawOverlays(this)) {
-            Toast.makeText(this, tr("请先授予悬浮窗权限，再点“连接”", "Please grant the overlay permission first, then tap \"Connect\""), Toast.LENGTH_LONG).show()
+            Toast.makeText(this, tr("请先授予悬浮窗权限，再点“开始”", "Please grant the overlay permission first, then tap \"Start\""), Toast.LENGTH_LONG).show()
             return
         }
         OverlayService.startInput(this, text)

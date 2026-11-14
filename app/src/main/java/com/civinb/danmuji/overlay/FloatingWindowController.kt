@@ -246,7 +246,7 @@ class FloatingWindowController(
         val hints = buildList {
             if (!manual) {
                 when (s.autoStatus) {
-                    AutoStatus.NO_PERMISSION -> add(tr("自动同步需要“通知使用权”（首页视频卡片里开启），或点“自动”切到手动", "Auto sync needs \"Notification access\" (enable it in the video card on the home screen), or tap \"Auto\" to switch to manual"))
+                    AutoStatus.NO_PERMISSION -> add(tr("自动同步需要“通知使用权”（首页“必要权限”里开启），或点“自动”切到手动", "Auto sync needs \"Notification access\" (enable it under \"Required permissions\" on the home screen), or tap \"Auto\" to switch to manual"))
                     AutoStatus.NO_SESSION -> add(tr("未检测到 B 站正在播放，请在 B 站 App 里播放该视频", "No Bilibili playback detected. Play this video in the Bilibili app"))
                     else -> Unit
                 }
