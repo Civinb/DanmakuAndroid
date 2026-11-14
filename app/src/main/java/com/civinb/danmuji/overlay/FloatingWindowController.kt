@@ -30,6 +30,7 @@ import com.civinb.danmuji.model.DanmakuItem
 import com.civinb.danmuji.model.DanmakuKind
 import com.civinb.danmuji.settings.OverlaySettings
 import com.civinb.danmuji.settings.SettingsRepository
+import com.civinb.danmuji.settings.WindowGeometry
 import com.civinb.danmuji.video.AutoStatus
 import com.civinb.danmuji.video.MediaStatus
 import com.civinb.danmuji.video.SyncMode
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
+import com.civinb.danmuji.util.tr
 
 /**
  * 管理三个悬浮窗口：
@@ -89,6 +91,9 @@ class FloatingWindowController(
 
     private var settings = OverlaySettings()
     private var initialized = false
+
+    /** 当前窗口位置属于横屏还是竖屏那一套 */
+    private var landscape = false
     private var destroyed = false
 
     /** 用户正在拖动/缩放时为 true，此期间不接受来自设置流的位置覆盖。 */
@@ -167,28 +172,26 @@ class FloatingWindowController(
         settings = new
         if (!initialized) {
             initialized = true
-            panelParams.width = dp(new.widthDp)
-            panelParams.height = dp(new.heightDp)
-            panelParams.x = new.x
-            panelParams.y = new.y
+            landscape = isLandscape()
             bubbleParams.width = dp(BUBBLE_DP)
             bubbleParams.height = dp(BUBBLE_DP)
-            bubbleParams.x = new.bubbleX
-            bubbleParams.y = new.bubbleY
             unlockParams.width = dp(UNLOCK_DP)
             unlockParams.height = dp(UNLOCK_DP)
+            loadGeometry(new.geometry(landscape))
         } else if (!interacting) {
-            if (old.widthDp != new.widthDp || old.heightDp != new.heightDp) {
-                panelParams.width = dp(new.widthDp)
-                panelParams.height = dp(new.heightDp)
+            val o = old.geometry(landscape)
+            val n = new.geometry(landscape)
+            if (o.widthDp != n.widthDp || o.heightDp != n.heightDp) {
+                panelParams.width = dp(n.widthDp)
+                panelParams.height = dp(n.heightDp)
             }
-            if (old.x != new.x || old.y != new.y) {
-                panelParams.x = new.x
-                panelParams.y = new.y
+            if (o.x != n.x || o.y != n.y) {
+                panelParams.x = n.x
+                panelParams.y = n.y
             }
-            if (old.bubbleX != new.bubbleX || old.bubbleY != new.bubbleY) {
-                bubbleParams.x = new.bubbleX
-                bubbleParams.y = new.bubbleY
+            if (o.bubbleX != n.bubbleX || o.bubbleY != n.bubbleY) {
+                bubbleParams.x = n.bubbleX
+                bubbleParams.y = n.bubbleY
             }
         }
         clamp(panelParams)
@@ -220,7 +223,7 @@ class FloatingWindowController(
     fun updateVideoState(s: VideoUiState) {
         if (!videoEnabled) setVideoMode(true)
         val manual = s.mode == SyncMode.MANUAL
-        videoMode.setText(if (manual) R.string.video_manual else R.string.video_auto)
+        videoMode.text = if (manual) tr("手动", "Manual") else tr("自动", "Auto")
         videoPlay.visibility = if (manual) View.VISIBLE else View.GONE
         if (lastVideoPlaying != s.playing) {
             lastVideoPlaying = s.playing
@@ -229,7 +232,7 @@ class FloatingWindowController(
         videoSeek.visibility = if (manual) View.VISIBLE else View.GONE
         if (!userSeeking) {
             val offset = if (!manual && s.offsetMs != 0L) {
-                "  偏移" + (if (s.offsetMs > 0) "+" else "−") + "%.1fs".format(kotlin.math.abs(s.offsetMs) / 1000.0)
+                tr("  偏移", "  offset") + (if (s.offsetMs > 0) "+" else "−") + "%.1fs".format(kotlin.math.abs(s.offsetMs) / 1000.0)
             } else {
                 ""
             }
@@ -243,13 +246,13 @@ class FloatingWindowController(
         val hints = buildList {
             if (!manual) {
                 when (s.autoStatus) {
-                    AutoStatus.NO_PERMISSION -> add("自动同步需要“通知使用权”（首页视频卡片里开启），或点“自动”切到手动")
-                    AutoStatus.NO_SESSION -> add("未检测到 B 站正在播放，请在 B 站 App 里播放该视频")
+                    AutoStatus.NO_PERMISSION -> add(tr("自动同步需要“通知使用权”（首页视频卡片里开启），或点“自动”切到手动", "Auto sync needs \"Notification access\" (enable it in the video card on the home screen), or tap \"Auto\" to switch to manual"))
+                    AutoStatus.NO_SESSION -> add(tr("未检测到 B 站正在播放，请在 B 站 App 里播放该视频", "No Bilibili playback detected. Play this video in the Bilibili app"))
                     else -> Unit
                 }
-                if (s.titleMismatch) add("B站当前播放「${s.sessionTitle.orEmpty().take(24)}」，可能不是这个视频")
+                if (s.titleMismatch) add(tr("B站当前播放「${s.sessionTitle.orEmpty().take(24)}」，可能不是这个视频", "Bilibili is playing \"${s.sessionTitle.orEmpty().take(24)}\", which may not be this video"))
             }
-            if (s.loadedSegments < s.totalSegments) add("弹幕加载中 ${s.loadedSegments}/${s.totalSegments} 段")
+            if (s.loadedSegments < s.totalSegments) add(tr("弹幕加载中 ${s.loadedSegments}/${s.totalSegments} 段", "Loading danmaku ${s.loadedSegments}/${s.totalSegments} segments"))
         }
         val hint = hints.joinToString("\n")
         if (videoHint.text.toString() != hint) videoHint.text = hint
@@ -308,8 +311,13 @@ class FloatingWindowController(
         listener.onWindowStateChanged()
     }
 
-    /** 屏幕旋转/尺寸变化后调用，把窗口拉回屏幕内。 */
+    /** 屏幕旋转/尺寸变化后调用：横竖屏切换时换成该方向保存的位置和大小，再把窗口拉回可放置区域内。 */
     fun onScreenChanged() {
+        val nowLandscape = isLandscape()
+        if (initialized && nowLandscape != landscape) {
+            landscape = nowLandscape
+            loadGeometry(settings.geometry(nowLandscape))
+        }
         clamp(panelParams)
         clamp(bubbleParams)
         refreshWindows()
@@ -398,6 +406,17 @@ class FloatingWindowController(
                 listener.onVideoSeek(bar.progress * 1000L)
             }
         })
+        // 布局里的文字按应用内语言设置重新设置一遍（资源只跟随系统语言）
+        actionBlockUser.text = tr("屏蔽此用户", "Block this user")
+        actionBlockText.text = tr("屏蔽这句", "Block this text")
+        actionCancel.text = tr("取消", "Cancel")
+        videoMode.text = tr("自动", "Auto")
+        btnBlackout.contentDescription = tr("黑屏背景", "Blackout background")
+        btnLock.contentDescription = tr("锁定（触摸穿透）", "Lock (touch pass-through)")
+        btnCollapse.contentDescription = tr("折叠", "Collapse")
+        btnClose.contentDescription = tr("关闭", "Close")
+        resizeHandle.contentDescription = tr("调整大小", "Resize")
+        videoPlay.contentDescription = tr("播放/暂停", "Play/Pause")
         actionCancel.setOnClickListener { hideActions() }
         actionBlockUser.setOnClickListener {
             actionTarget?.let { listener.onBlockUser(it) }
@@ -423,7 +442,7 @@ class FloatingWindowController(
     }
 
     private fun createBubble(): TextView = TextView(themed).apply {
-        text = "弹"
+        text = tr("弹", "D")
         gravity = Gravity.CENTER
         textSize = 16f
         setTextColor(0xFFFFFFFF.toInt())
@@ -437,7 +456,7 @@ class FloatingWindowController(
         setImageResource(R.drawable.ic_lock)
         val pad = (6 * density).roundToInt()
         setPadding(pad, pad, pad, pad)
-        contentDescription = themed.getString(R.string.unlock)
+        contentDescription = tr("解锁", "Unlock")
         background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(0x99000000.toInt())
@@ -524,14 +543,14 @@ class FloatingWindowController(
         actionTarget = item
         val who = when {
             !item.userName.isNullOrEmpty() -> item.userName
-            !item.userHash.isNullOrEmpty() -> "视频弹幕发送者"
+            !item.userHash.isNullOrEmpty() -> tr("视频弹幕发送者", "Video danmaku sender")
             else -> null
         }
         val masked = item.userId == 0L && who != null && who.contains('*')
         actionTitle.text = buildString {
-            append(if (who != null) "$who：" else "")
+            append(if (who != null) tr("$who：", "$who: ") else "")
             append(item.text.take(60))
-            if (masked) append("\n（未登录时昵称被打码，屏蔽会同时屏蔽所有同样打码名字的用户）")
+            if (masked) append(tr("\n（未登录时昵称被打码，屏蔽会同时屏蔽所有同样打码名字的用户）", "\n(When not logged in, usernames are masked; blocking will also block every user with the same masked name)"))
         }
         val canBlockUser = item.userId > 0 || !item.userName.isNullOrEmpty() || !item.userHash.isNullOrEmpty()
         actionBlockUser.visibility = if (canBlockUser) View.VISIBLE else View.GONE
@@ -561,7 +580,7 @@ class FloatingWindowController(
 
     private fun updateJumpButton() {
         if (settings.locked || actionBar.visibility == View.VISIBLE) return
-        btnJumpLatest.text = if (unseenCount > 0) "↓ 回到最新（$unseenCount）" else "↓ 回到最新"
+        btnJumpLatest.text = if (unseenCount > 0) tr("↓ 回到最新（$unseenCount）", "↓ Latest ($unseenCount)") else tr("↓ 回到最新", "↓ Latest")
         btnJumpLatest.visibility = View.VISIBLE
     }
 
@@ -573,19 +592,36 @@ class FloatingWindowController(
     // ================= 持久化 =================
 
     private fun savePanelGeometry() {
+        val land = landscape
         val x = panelParams.x
         val y = panelParams.y
         val w = (panelParams.width / density).roundToInt()
         val h = (panelParams.height / density).roundToInt()
-        settings = settings.copy(x = x, y = y, widthDp = w, heightDp = h)
-        persist { it.copy(x = x, y = y, widthDp = w, heightDp = h) }
+        settings = settings.withPanel(land, x, y, w, h)
+        persist { it.withPanel(land, x, y, w, h) }
     }
 
     private fun saveBubblePosition() {
+        val land = landscape
         val x = bubbleParams.x
         val y = bubbleParams.y
-        settings = settings.copy(bubbleX = x, bubbleY = y)
-        persist { it.copy(bubbleX = x, bubbleY = y) }
+        settings = settings.withBubble(land, x, y)
+        persist { it.withBubble(land, x, y) }
+    }
+
+    /** 把某个方向保存的位置和大小放到窗口参数上（之后由调用方 clamp） */
+    private fun loadGeometry(g: WindowGeometry) {
+        panelParams.width = dp(g.widthDp)
+        panelParams.height = dp(g.heightDp)
+        panelParams.x = g.x
+        panelParams.y = g.y
+        bubbleParams.x = g.bubbleX
+        bubbleParams.y = g.bubbleY
+    }
+
+    private fun isLandscape(): Boolean {
+        val screen = screenSize()
+        return screen.x > screen.y
     }
 
     private fun persist(transform: (OverlaySettings) -> OverlaySettings) {

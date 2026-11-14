@@ -11,6 +11,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import com.civinb.danmuji.util.tr
 
 /**
  * 视频相关接口（2026-09 查证）：
@@ -30,7 +31,7 @@ class VideoApi(private val http: BiliHttp, private val auth: BiliAuth) {
         val params = when {
             !bvid.isNullOrEmpty() -> mapOf("bvid" to bvid)
             aid != null && aid > 0 -> mapOf("aid" to aid.toString())
-            else -> throw IllegalArgumentException("缺少 BV 号或 av 号")
+            else -> throw IllegalArgumentException(tr("缺少 BV 号或 av 号", "Missing BV or av ID"))
         }
         auth.ensureBuvid()
 
@@ -45,14 +46,14 @@ class VideoApi(private val http: BiliHttp, private val auth: BiliAuth) {
                 val json = http.getJson(url, REFERER)
                 val code = json.optInt("code", -1)
                 if (code == -352 || code == -412) {
-                    DebugLog.log(TAG, "$name 返回 code=$code（风控），尝试下一个接口")
+                    DebugLog.log(TAG, tr("$name 返回 code=$code（风控），尝试下一个接口", "$name returned code=$code (risk control), trying the next API"))
                     continue
                 }
                 val info = parseView(json.dataOrThrow())
-                DebugLog.log(TAG, "$name 成功")
+                DebugLog.log(TAG, tr("$name 成功", "$name succeeded"))
                 return info
             } catch (e: BiliHttpException) {
-                DebugLog.log(TAG, "$name 返回 HTTP ${e.status}，尝试下一个接口")
+                DebugLog.log(TAG, tr("$name 返回 HTTP ${e.status}，尝试下一个接口", "$name returned HTTP ${e.status}, trying the next API"))
             } catch (e: BiliApiException) {
                 // 视频不存在（-404）、不可见（62002）等明确错误，换接口也没用
                 if (e.code != -352 && e.code != -412) throw e
@@ -65,21 +66,21 @@ class VideoApi(private val http: BiliHttp, private val auth: BiliAuth) {
             val code = json.optInt("code", -1)
             if (code != 0) throw BiliApiException(code, json.optString("message"))
             val pages = parsePages(json.optJSONArray("data"))
-            if (pages.isEmpty()) throw BiliApiException(-1, "视频没有分P信息")
-            DebugLog.log(TAG, "pagelist 成功（无标题）")
+            if (pages.isEmpty()) throw BiliApiException(-1, tr("视频没有分P信息", "Video has no part info"))
+            DebugLog.log(TAG, tr("pagelist 成功（无标题）", "pagelist succeeded (no titles)"))
             return VideoInfo(bvid = bvid.orEmpty(), aid = aid ?: 0, title = "", pages = pages)
         } catch (e: BiliHttpException) {
-            DebugLog.log(TAG, "pagelist 返回 HTTP ${e.status}")
+            DebugLog.log(TAG, tr("pagelist 返回 HTTP ${e.status}", "pagelist returned HTTP ${e.status}"))
             throw e
         } catch (e: BiliApiException) {
-            DebugLog.log(TAG, "pagelist 失败：${e.message}")
+            DebugLog.log(TAG, tr("pagelist 失败：${e.message}", "pagelist failed: ${e.message}"))
             throw e
         }
     }
 
     private fun parseView(data: JSONObject): VideoInfo {
         val pages = parsePages(data.optJSONArray("pages"))
-        if (pages.isEmpty()) throw BiliApiException(-1, "视频没有分P信息")
+        if (pages.isEmpty()) throw BiliApiException(-1, tr("视频没有分P信息", "Video has no part info"))
         return VideoInfo(
             bvid = data.optString("bvid"),
             aid = data.optLong("aid"),
@@ -114,9 +115,9 @@ class VideoApi(private val http: BiliHttp, private val auth: BiliAuth) {
             val (status, bytes) = http.getBytes(SEG_WBI_URL.toHttpUrl().withParams(auth.sign(base)), REFERER)
             if (status == 304) return emptyList()
             if (status in 200..299) return DmSegDecoder.decode(bytes)
-            DebugLog.log(TAG, "seg.so(WBI) 第 $segmentIndex 段 HTTP $status，改用旧接口")
+            DebugLog.log(TAG, tr("seg.so(WBI) 第 $segmentIndex 段 HTTP $status，改用旧接口", "seg.so(WBI) segment $segmentIndex HTTP $status, falling back to the old API"))
         } catch (e: IOException) {
-            DebugLog.log(TAG, "seg.so(WBI) 第 $segmentIndex 段失败：${e.message}，改用旧接口")
+            DebugLog.log(TAG, tr("seg.so(WBI) 第 $segmentIndex 段失败：${e.message}，改用旧接口", "seg.so(WBI) segment $segmentIndex failed: ${e.message}, falling back to the old API"))
         }
         val (status, bytes) = http.getBytes(SEG_URL.toHttpUrl().withParams(base), REFERER)
         if (status == 304) return emptyList()
@@ -127,7 +128,7 @@ class VideoApi(private val http: BiliHttp, private val auth: BiliAuth) {
     private fun JSONObject.dataOrThrow(): JSONObject {
         val code = optInt("code", -1)
         if (code != 0) throw BiliApiException(code, optString("message"))
-        return optJSONObject("data") ?: throw BiliApiException(code, "缺少 data")
+        return optJSONObject("data") ?: throw BiliApiException(code, tr("缺少 data", "Missing data"))
     }
 
     private fun HttpUrl.withParams(params: Map<String, String>): HttpUrl {

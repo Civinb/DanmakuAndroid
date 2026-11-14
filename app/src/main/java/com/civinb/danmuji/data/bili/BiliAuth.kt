@@ -8,6 +8,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONObject
 import java.util.Base64
 import kotlin.random.Random
+import com.civinb.danmuji.util.tr
 
 /**
  * 访客身份：buvid3（设备标识）与 WBI 签名密钥。
@@ -57,10 +58,10 @@ class BiliAuth(private val http: BiliHttp, private val prefs: SharedPreferences)
                 referer = "https://www.bilibili.com/",
             )
             val code = resp.optInt("code", -1)
-            DebugLog.log(TAG, "buvid 激活返回 code=$code")
+            DebugLog.log(TAG, tr("buvid 激活返回 code=$code", "buvid activation returned code=$code"))
             if (code == 0) prefs.edit().putBoolean(key, true).apply()
         } catch (e: Exception) {
-            DebugLog.log(TAG, "buvid 激活失败：${e.message}")
+            DebugLog.log(TAG, tr("buvid 激活失败：${e.message}", "buvid activation failed: ${e.message}"))
         }
     }
 
@@ -75,19 +76,19 @@ class BiliAuth(private val http: BiliHttp, private val prefs: SharedPreferences)
                 http.cookieJar.put("buvid3", b3)
                 if (b4.isNotEmpty()) http.cookieJar.put("buvid4", b4)
                 http.cookieJar.put("b_nut", (System.currentTimeMillis() / 1000).toString())
-                DebugLog.log(TAG, "buvid3 已获取（spi）")
+                DebugLog.log(TAG, tr("buvid3 已获取（spi）", "Got buvid3 (spi)"))
                 return b3
             }
         } catch (e: Exception) {
-            DebugLog.log(TAG, "spi 获取 buvid 失败：${e.message}")
+            DebugLog.log(TAG, tr("spi 获取 buvid 失败：${e.message}", "Failed to get buvid from spi: ${e.message}"))
         }
         try {
             http.touch(HOME_URL.toHttpUrl())
         } catch (e: Exception) {
-            DebugLog.log(TAG, "首页获取 buvid 失败：${e.message}")
+            DebugLog.log(TAG, tr("首页获取 buvid 失败：${e.message}", "Failed to get buvid from home page: ${e.message}"))
         }
         val fromHome = http.cookieJar.get("buvid3").orEmpty()
-        DebugLog.log(TAG, if (fromHome.isNotEmpty()) "buvid3 已获取（首页）" else "未能获取 buvid3，继续尝试连接")
+        DebugLog.log(TAG, if (fromHome.isNotEmpty()) tr("buvid3 已获取（首页）", "Got buvid3 (home page)") else tr("未能获取 buvid3，继续尝试连接", "Couldn't get buvid3, trying to connect anyway"))
         return fromHome
     }
 
@@ -97,12 +98,12 @@ class BiliAuth(private val http: BiliHttp, private val prefs: SharedPreferences)
         if (cached != null && System.currentTimeMillis() - mixinKeyTime < WBI_TTL_MS) return cached
         val json = http.getJson(NAV_URL.toHttpUrl(), referer = "https://www.bilibili.com/")
         val img = json.optJSONObject("data")?.optJSONObject("wbi_img")
-            ?: throw BiliApiException(json.optInt("code"), "nav 接口没有返回 wbi_img")
+            ?: throw BiliApiException(json.optInt("code"), tr("nav 接口没有返回 wbi_img", "nav API returned no wbi_img"))
         val key = Wbi.mixinKey(Wbi.keyFromUrl(img.optString("img_url")), Wbi.keyFromUrl(img.optString("sub_url")))
-        if (key.length < 32) throw BiliApiException(-1, "WBI 密钥格式异常")
+        if (key.length < 32) throw BiliApiException(-1, tr("WBI 密钥格式异常", "Unexpected WBI key format"))
         mixinKey = key
         mixinKeyTime = System.currentTimeMillis()
-        DebugLog.log(TAG, "WBI 密钥已刷新")
+        DebugLog.log(TAG, tr("WBI 密钥已刷新", "WBI keys refreshed"))
         key
     }
 

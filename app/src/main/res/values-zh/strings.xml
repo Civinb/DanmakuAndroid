@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">弹幕机</string>
+    <string name="probe_listener_label">弹幕机 · 视频进度同步</string>
+    <string name="blackout">黑屏背景</string>
+    <string name="lock">锁定（触摸穿透）</string>
+    <string name="unlock">解锁</string>
+    <string name="collapse">折叠</string>
+    <string name="close">关闭</string>
+    <string name="resize">调整大小</string>
+    <string name="channel_overlay">悬浮弹幕</string>
+    <string name="block_user">屏蔽此用户</string>
+    <string name="block_text">屏蔽这句</string>
+    <string name="cancel">取消</string>
+    <string name="video_auto">自动</string>
+    <string name="video_manual">手动</string>
+    <string name="video_play">播放/暂停</string>
+</resources>

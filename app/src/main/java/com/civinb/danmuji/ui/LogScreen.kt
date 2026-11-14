@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.civinb.danmuji.util.DebugLog
+import com.civinb.danmuji.util.tr
 
 @Composable
 fun LogScreen() {
@@ -34,17 +35,17 @@ fun LogScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        HintText("记录连接过程（不含 Cookie 等敏感信息）。连不上或经常断线时，点“复制”发给开发者。")
+        HintText(tr("记录连接过程（不含 Cookie 等敏感信息）。连不上或经常断线时，点“复制”发给开发者。", "Records the connection process (no cookies or other sensitive data). If you can't connect or keep getting disconnected, tap \"Copy\" and send it to the developer."))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = {
                 val cm = context.getSystemService(ClipboardManager::class.java)
                 cm.setPrimaryClip(ClipData.newPlainText("danmuji log", lines.joinToString("\n")))
-                Toast.makeText(context, "已复制 ${lines.size} 行", Toast.LENGTH_SHORT).show()
-            }) { Text("复制") }
-            OutlinedButton(onClick = { DebugLog.clear() }) { Text("清空") }
+                Toast.makeText(context, tr("已复制 ${lines.size} 行", "Copied ${lines.size} lines"), Toast.LENGTH_SHORT).show()
+            }) { Text(tr("复制", "Copy")) }
+            OutlinedButton(onClick = { DebugLog.clear() }) { Text(tr("清空", "Clear")) }
         }
         if (lines.isEmpty()) {
-            HintText("暂无日志")
+            HintText(tr("暂无日志", "No logs yet"))
         } else {
             // 最新的在上面
             lines.asReversed().forEach { line ->

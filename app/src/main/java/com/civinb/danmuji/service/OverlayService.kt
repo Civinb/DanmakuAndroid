@@ -37,6 +37,7 @@ import com.civinb.danmuji.source.InputDanmakuSource
 import com.civinb.danmuji.source.SourceEvent
 import com.civinb.danmuji.ui.MainActivity
 import com.civinb.danmuji.util.DebugLog
+import com.civinb.danmuji.util.LanguageManager
 import com.civinb.danmuji.video.MediaStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -52,6 +53,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.civinb.danmuji.util.tr
 
 /**
  * 前台服务：持有悬浮窗和弹幕来源，保证切到 B 站 App 后连接不断。
@@ -60,7 +62,7 @@ class OverlayService : Service() {
 
     private val scope = CoroutineScope(
         SupervisorJob() + Dispatchers.Main.immediate +
-            CoroutineExceptionHandler { _, e -> DebugLog.log("Service", "未捕获异常：$e") },
+            CoroutineExceptionHandler { _, e -> DebugLog.log("Service", tr("未捕获异常：$e", "Uncaught exception: $e")) },
     )
     private lateinit var repository: SettingsRepository
     private lateinit var filterRepository: FilterRepository
@@ -79,7 +81,7 @@ class OverlayService : Service() {
 
     @Volatile
     private var filterEngine = FilterEngine(FilterSettings())
-    private var statusText = "准备中"
+    private var statusText = tr("准备中", "Preparing")
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -108,7 +110,7 @@ class OverlayService : Service() {
                 // ACTION_START：通过 startForegroundService 启动，必须尽快调用 startForeground
                 startForegroundCompat()
                 if (!Settings.canDrawOverlays(this)) {
-                    Toast.makeText(this, "没有悬浮窗权限，请先在首页授权", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, tr("没有悬浮窗权限，请先在首页授权", "No overlay permission. Please grant it on the home screen first"), Toast.LENGTH_LONG).show()
                     stopEverything()
                     return START_NOT_STICKY
                 }
@@ -127,6 +129,7 @@ class OverlayService : Service() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        LanguageManager.apply(this)
         controller?.onScreenChanged()
     }
 
@@ -172,7 +175,7 @@ class OverlayService : Service() {
                 filterSettings = fs
                 filterEngine = engine
                 if (engine.invalidRules.isNotEmpty()) {
-                    DebugLog.log("Filter", "有 ${engine.invalidRules.size} 条正则无效，已忽略")
+                    DebugLog.log("Filter", tr("有 ${engine.invalidRules.size} 条正则无效，已忽略", "${engine.invalidRules.size} invalid regex rules ignored"))
                 }
                 // 新增的屏蔽规则对已显示的弹幕也生效
                 c.removeWhere { engine.isBlocked(it) }
@@ -225,8 +228,8 @@ class OverlayService : Service() {
                 throw e
             } catch (e: Exception) {
                 // 来源内部未处理的异常不能让整个应用崩溃
-                DebugLog.log("Service", "弹幕来源异常：$e")
-                withContext(Dispatchers.Main) { showStatus("出错：${e.message ?: e.javaClass.simpleName}") }
+                DebugLog.log("Service", tr("弹幕来源异常：$e", "Danmaku source error: $e"))
+                withContext(Dispatchers.Main) { showStatus(tr("出错：${e.message ?: e.javaClass.simpleName}", "Error: ${e.message ?: e.javaClass.simpleName}")) }
             }
         }
     }
@@ -260,18 +263,18 @@ class OverlayService : Service() {
             val (pattern, note) = when {
                 item.userId > 0 -> item.userId.toString() to item.userName.orEmpty()
                 !item.userName.isNullOrEmpty() -> item.userName.orEmpty() to ""
-                !item.userHash.isNullOrEmpty() -> item.userHash.orEmpty() to "视频弹幕发送者"
+                !item.userHash.isNullOrEmpty() -> item.userHash.orEmpty() to tr("视频弹幕发送者", "Video danmaku sender")
                 else -> return@launch
             }
             filterRepository.addRule(RuleType.USER, RuleAction.BLOCK, pattern, note)
-            Toast.makeText(this@OverlayService, "已屏蔽用户：${item.userName ?: note}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@OverlayService, tr("已屏蔽用户：${item.userName ?: note}", "Blocked user: ${item.userName ?: note}"), Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun blockText(item: DanmakuItem) {
         scope.launch {
             filterRepository.addRule(RuleType.KEYWORD, RuleAction.BLOCK, item.text)
-            Toast.makeText(this@OverlayService, "已屏蔽：${item.text.take(20)}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@OverlayService, tr("已屏蔽：${item.text.take(20)}", "Blocked: ${item.text.take(20)}"), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -325,7 +328,7 @@ class OverlayService : Service() {
         )
         return NotificationCompat.Builder(this, DanmuApp.CHANNEL_OVERLAY)
             .setSmallIcon(R.drawable.ic_stat_danmaku)
-            .setContentTitle(getString(R.string.app_name))
+            .setContentTitle(tr("弹幕机", "Danmaku Viewer"))
             .setContentText(statusText)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -333,9 +336,9 @@ class OverlayService : Service() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(openApp)
-            .addAction(0, if (locked) "解锁" else "锁定", servicePendingIntent(ACTION_TOGGLE_LOCK, 1))
-            .addAction(0, if (collapsed) "展开" else "折叠", servicePendingIntent(ACTION_TOGGLE_COLLAPSE, 2))
-            .addAction(0, "停止", servicePendingIntent(ACTION_STOP, 3))
+            .addAction(0, if (locked) tr("解锁", "Unlock") else tr("锁定", "Lock"), servicePendingIntent(ACTION_TOGGLE_LOCK, 1))
+            .addAction(0, if (collapsed) tr("展开", "Expand") else tr("折叠", "Collapse"), servicePendingIntent(ACTION_TOGGLE_COLLAPSE, 2))
+            .addAction(0, tr("停止", "Stop"), servicePendingIntent(ACTION_STOP, 3))
             .build()
     }
 

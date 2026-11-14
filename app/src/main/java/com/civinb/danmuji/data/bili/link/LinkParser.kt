@@ -1,5 +1,7 @@
 package com.civinb.danmuji.data.bili.link
 
+import com.civinb.danmuji.util.tr
+
 /** 用户输入（房间号 / 链接 / B 站 App 分享出来的整段文字）解析出的目标。 */
 sealed interface LinkTarget {
     data class Live(val roomId: Long) : LinkTarget
@@ -29,12 +31,12 @@ object LinkParser {
 
     fun parse(input: String): LinkTarget {
         val text = input.trim()
-        if (text.isEmpty()) return LinkTarget.Invalid("请输入直播间号或链接")
+        if (text.isEmpty()) return LinkTarget.Invalid(tr("请输入直播间号或链接", "Enter a live room number or link"))
 
         // 纯数字：直播间号
         if (text.all { it.isDigit() }) {
             val id = text.toLongOrNull()
-            return if (id != null && id > 0) LinkTarget.Live(id) else LinkTarget.Invalid("直播间号不正确")
+            return if (id != null && id > 0) LinkTarget.Live(id) else LinkTarget.Invalid(tr("直播间号不正确", "Invalid live room number"))
         }
 
         // 不带 http 前缀的直播链接也识别
@@ -54,9 +56,9 @@ object LinkParser {
             ?.let { return LinkTarget.NeedsRedirect(it) }
 
         return if (urls.isNotEmpty()) {
-            LinkTarget.Invalid("无法识别这个链接：${urls.first()}")
+            LinkTarget.Invalid(tr("无法识别这个链接：${urls.first()}", "Unrecognized link: ${urls.first()}"))
         } else {
-            LinkTarget.Invalid("没有找到直播间号或链接")
+            LinkTarget.Invalid(tr("没有找到直播间号或链接", "No live room number or link found"))
         }
     }
 

@@ -4,6 +4,7 @@ import com.civinb.danmuji.data.bili.BiliApiException
 import com.civinb.danmuji.data.bili.BiliHttp
 import com.civinb.danmuji.util.DebugLog
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import com.civinb.danmuji.util.tr
 
 /**
  * B 站网页扫码登录（2026-09 查证：JLiverTool api.rs、BiliNest server.mjs 用法一致）：
@@ -21,11 +22,19 @@ class LoginApi(private val http: BiliHttp, private val store: CredentialStore) {
 
     data class Account(val isLogin: Boolean, val mid: Long, val uname: String)
 
+    enum class SessionCheck { NOT_LOGGED_IN, VALID, EXPIRED, UNKNOWN }
+
+    /** 本次运行中已确认登录失效（本地凭证仍保留，重新扫码会覆盖） */
+    @Volatile
+    private var sessionExpired = false
+
+    fun isExpired(): Boolean = sessionExpired
+
     /** 应用启动时把保存的凭证放回 Cookie */
     fun restore() {
         val saved = store.load() ?: return
         saved.forEach { (k, v) -> http.cookieJar.put(k, v, persist = false) }
-        DebugLog.log(TAG, "已恢复登录凭证")
+        DebugLog.log(TAG, tr("已恢复登录凭证", "Saved login restored"))
     }
 
     fun isLoggedIn(): Boolean = http.cookieJar.get("SESSDATA") != null
@@ -37,7 +46,7 @@ class LoginApi(private val http: BiliHttp, private val store: CredentialStore) {
         val json = http.getJson(GENERATE_URL.toHttpUrl(), REFERER)
         val code = json.optInt("code", -1)
         if (code != 0) throw BiliApiException(code, json.optString("message"))
-        val data = json.optJSONObject("data") ?: throw BiliApiException(-1, "缺少 data")
+        val data = json.optJSONObject("data") ?: throw BiliApiException(-1, tr("缺少 data", "Missing data"))
         return QrCode(url = data.optString("url"), key = data.optString("qrcode_key"))
     }
 
@@ -46,20 +55,21 @@ class LoginApi(private val http: BiliHttp, private val store: CredentialStore) {
         val json = http.getJson(url, REFERER)
         val rootCode = json.optInt("code", -1)
         if (rootCode != 0) throw BiliApiException(rootCode, json.optString("message"))
-        val data = json.optJSONObject("data") ?: throw BiliApiException(-1, "缺少 data")
+        val data = json.optJSONObject("data") ?: throw BiliApiException(-1, tr("缺少 data", "Missing data"))
         return when (val c = data.optInt("code", -1)) {
             0 -> {
                 if (http.cookieJar.get("SESSDATA") == null) {
                     val follow = data.optString("url")
                     if (follow.startsWith("https://")) {
-                        DebugLog.log(TAG, "轮询响应未带 SESSDATA，访问跳转地址补取")
+                        DebugLog.log(TAG, tr("轮询响应未带 SESSDATA，访问跳转地址补取", "Poll response had no SESSDATA, fetching it from the redirect URL"))
                         http.touch(follow.toHttpUrl())
                     }
                 }
                 val cookies = LOGIN_COOKIES.mapNotNull { name -> http.cookieJar.get(name)?.let { name to it } }.toMap()
-                if (!cookies.containsKey("SESSDATA")) throw BiliApiException(-1, "登录成功，但没有拿到会话 Cookie")
+                if (!cookies.containsKey("SESSDATA")) throw BiliApiException(-1, tr("登录成功，但没有拿到会话 Cookie", "Login succeeded but no session cookie was received"))
                 store.save(cookies)
-                DebugLog.log(TAG, "扫码登录成功，已加密保存 ${cookies.size} 个 Cookie")
+                sessionExpired = false
+                DebugLog.log(TAG, tr("扫码登录成功，已加密保存 ${cookies.size} 个 Cookie", "QR login succeeded, ${cookies.size} cookies encrypted and saved"))
                 QrState.SUCCESS
             }
             86101 -> QrState.WAIT_SCAN
@@ -87,19 +97,45 @@ class LoginApi(private val http: BiliHttp, private val store: CredentialStore) {
         if (csrf != null) {
             try {
                 val json = http.postForm(LOGOUT_URL.toHttpUrl(), mapOf("biliCSRF" to csrf), "https://www.bilibili.com/")
-                DebugLog.log(TAG, "退出登录返回 code=${json.optInt("code", -1)}")
+                DebugLog.log(TAG, tr("退出登录返回 code=${json.optInt("code", -1)}", "Logout returned code=${json.optInt("code", -1)}"))
             } catch (e: Exception) {
-                DebugLog.log(TAG, "退出登录请求失败（本地凭证仍会删除）：${e.message}")
+                DebugLog.log(TAG, tr("退出登录请求失败（本地凭证仍会删除）：${e.message}", "Logout request failed (local credentials are still deleted): ${e.message}"))
             }
         }
         LOGIN_COOKIES.forEach { http.cookieJar.remove(it) }
         store.clear()
+        sessionExpired = false
+    }
+
+    /**
+     * 开始看弹幕前调用：本地有登录凭证时向 B 站核对是否仍然有效。
+     * 失效时本次运行改用未登录身份（从内存 Cookie 中移除登录 Cookie，避免直播认证时 UID 与会话不符），
+     * 本地加密凭证不删除；之后每次开始看弹幕都会返回 EXPIRED，直到重新扫码或退出登录。
+     * 网络等原因无法确认时返回 UNKNOWN，不做处理。
+     */
+    suspend fun verifySession(): SessionCheck {
+        if (sessionExpired) return SessionCheck.EXPIRED
+        if (!isLoggedIn()) return SessionCheck.NOT_LOGGED_IN
+        val account = try {
+            account()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            DebugLog.log(TAG, tr("无法确认登录状态：${e.message}", "Couldn't verify login status: ${e.message}"))
+            return SessionCheck.UNKNOWN
+        }
+        if (account.isLogin) return SessionCheck.VALID
+        DebugLog.log(TAG, tr("B 站提示未登录：登录已失效，本次改用未登录身份", "Bilibili says not logged in: login has expired, using guest mode for this run"))
+        LOGIN_COOKIES.forEach { http.cookieJar.remove(it) }
+        sessionExpired = true
+        return SessionCheck.EXPIRED
     }
 
     /** 只删除本地凭证（例如 B 站那边已失效） */
     fun clearLocal() {
         LOGIN_COOKIES.forEach { http.cookieJar.remove(it) }
         store.clear()
+        sessionExpired = false
     }
 
     private companion object {

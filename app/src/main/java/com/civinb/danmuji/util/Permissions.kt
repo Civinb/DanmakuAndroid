@@ -56,10 +56,10 @@ object Permissions {
             try {
                 context.startActivity(appDetailsIntent(context))
             } catch (e2: ActivityNotFoundException) {
-                Toast.makeText(context, "无法打开设置页面，请手动前往系统设置", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, tr("无法打开设置页面，请手动前往系统设置", "Can't open the settings page. Please open system settings manually"), Toast.LENGTH_LONG).show()
             }
         } catch (e: SecurityException) {
-            Toast.makeText(context, "系统拒绝打开该设置页面，请手动前往系统设置", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, tr("系统拒绝打开该设置页面，请手动前往系统设置", "The system refused to open this settings page. Please open system settings manually"), Toast.LENGTH_LONG).show()
         }
     }
 }

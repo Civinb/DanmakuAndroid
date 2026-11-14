@@ -11,6 +11,7 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import com.civinb.danmuji.util.tr
 
 /**
  * 登录凭证（Cookie）的本地加密存储。
@@ -51,7 +52,7 @@ class CredentialStore(context: Context) {
             out
         } catch (e: Exception) {
             // 密钥丢失（例如系统清除了 Keystore）时无法解密，只能要求重新登录
-            DebugLog.log("Cred", "凭证解密失败，已清除：${e.javaClass.simpleName}")
+            DebugLog.log("Cred", tr("凭证解密失败，已清除：${e.javaClass.simpleName}", "Failed to decrypt credentials, cleared: ${e.javaClass.simpleName}"))
             clear()
             null
         }

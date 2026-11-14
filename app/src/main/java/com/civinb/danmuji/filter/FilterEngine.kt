@@ -2,6 +2,7 @@ package com.civinb.danmuji.filter
 
 import com.civinb.danmuji.model.DanmakuItem
 import com.civinb.danmuji.model.DanmakuKind
+import com.civinb.danmuji.util.tr
 
 /**
  * 过滤引擎（纯逻辑，线程安全：创建后只读）。设置变化时整体重建一个新实例。
@@ -74,7 +75,7 @@ class FilterEngine(settings: FilterSettings) {
             Regex(pattern)
             null
         } catch (e: Exception) {
-            e.message?.lineSequence()?.firstOrNull() ?: "正则格式错误"
+            e.message?.lineSequence()?.firstOrNull() ?: tr("正则格式错误", "Invalid regex")
         }
     }
 }

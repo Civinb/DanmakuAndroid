@@ -11,6 +11,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.civinb.danmuji.model.DanmakuItem
 import com.civinb.danmuji.model.DanmakuKind
+import com.civinb.danmuji.util.tr
 
 /**
  * 弹幕列表适配器。只做追加和从头部裁剪，不做 DiffUtil（弹幕只增不改，DiffUtil 反而浪费）。
@@ -127,15 +128,15 @@ class DanmakuAdapter : RecyclerView.Adapter<DanmakuAdapter.Holder>() {
             sb.appendColored("%d:%02d ".format(sec / 60, sec % 60), COLOR_TIME)
         }
         when (item.kind) {
-            DanmakuKind.SUPER_CHAT -> sb.appendColored("【SC ¥${item.price}】", COLOR_SC)
-            DanmakuKind.GIFT -> sb.appendColored("【礼物】", COLOR_GIFT)
-            DanmakuKind.ENTER -> sb.appendColored("【进场】", COLOR_ENTER)
-            DanmakuKind.SYSTEM -> sb.appendColored("【系统】", COLOR_SYSTEM)
+            DanmakuKind.SUPER_CHAT -> sb.appendColored(tr("【SC ¥${item.price}】", "[SC ¥${item.price}] "), COLOR_SC)
+            DanmakuKind.GIFT -> sb.appendColored(tr("【礼物】", "[Gift] "), COLOR_GIFT)
+            DanmakuKind.ENTER -> sb.appendColored(tr("【进场】", "[Enter] "), COLOR_ENTER)
+            DanmakuKind.SYSTEM -> sb.appendColored(tr("【系统】", "[System] "), COLOR_SYSTEM)
             DanmakuKind.DANMAKU -> Unit
         }
         val name = item.userName
         if (style.showUserName && !name.isNullOrEmpty()) {
-            sb.appendColored("$name：", COLOR_NAME)
+            sb.appendColored(tr("$name：", "$name: "), COLOR_NAME)
         }
         when (item.kind) {
             DanmakuKind.ENTER -> sb.appendColored(item.text, COLOR_ENTER)

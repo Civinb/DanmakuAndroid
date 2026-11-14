@@ -34,6 +34,7 @@ import com.civinb.danmuji.service.OverlayService
 import com.civinb.danmuji.util.LastInput
 import com.civinb.danmuji.util.Permissions
 import com.civinb.danmuji.util.ShareInbox
+import com.civinb.danmuji.util.tr
 
 @Composable
 fun HomeScreen(onNavigate: (Screen) -> Unit) {
@@ -66,7 +67,7 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
     fun connect() {
         val text = input.trim()
         if (text.isEmpty()) {
-            Toast.makeText(context, "请输入直播间号或链接", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, tr("请输入直播间号或链接", "Enter a live room number or link"), Toast.LENGTH_SHORT).show()
             return
         }
         LastInput.save(context, text)
@@ -80,45 +81,45 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SectionCard("必要权限") {
-            StatusRow("悬浮窗权限", overlayGranted, if (overlayGranted) null else "去授权") {
+        SectionCard(tr("必要权限", "Required permissions")) {
+            StatusRow(tr("悬浮窗权限", "Overlay permission"), overlayGranted, if (overlayGranted) null else tr("去授权", "Grant")) {
                 Permissions.open(context, Permissions.overlaySettingsIntent(context))
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                StatusRow("通知权限（显示运行状态和锁定/解锁按钮）", notificationGranted, if (notificationGranted) null else "授权") {
+                StatusRow(tr("通知权限（显示运行状态和锁定/解锁按钮）", "Notifications (shows status and lock/unlock buttons)"), notificationGranted, if (notificationGranted) null else tr("授权", "Allow")) {
                     notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
-            HintText("通知权限被拒绝时服务仍可运行，但通知栏里不会出现“解锁/停止”按钮。")
+            HintText(tr("通知权限被拒绝时服务仍可运行，但通知栏里不会出现“解锁/停止”按钮。", "If notifications are denied the service still runs, but the notification won't have the Unlock/Stop buttons."))
         }
 
-        SectionCard("直播弹幕") {
+        SectionCard(tr("直播弹幕", "Live danmaku")) {
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
-                label = { Text("直播间号 / 直播间链接 / 分享文字") },
+                label = { Text(tr("直播间号 / 直播间链接 / 分享文字", "Room number / room link / shared text")) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { connect() }, enabled = overlayGranted) {
-                    Text(if (running) "切换到此直播间" else "连接")
+                    Text(if (running) tr("切换到此直播间", "Switch to this room") else tr("连接", "Connect"))
                 }
                 OutlinedButton(onClick = {
                     val cm = context.getSystemService(ClipboardManager::class.java)
                     val text = cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
                     if (text.isNullOrBlank()) {
-                        Toast.makeText(context, "剪贴板是空的", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, tr("剪贴板是空的", "Clipboard is empty"), Toast.LENGTH_SHORT).show()
                     } else {
                         input = text.trim()
                     }
-                }) { Text("粘贴") }
-                OutlinedButton(onClick = { OverlayService.stop(context) }, enabled = running) { Text("停止") }
+                }) { Text(tr("粘贴", "Paste")) }
+                OutlinedButton(onClick = { OverlayService.stop(context) }, enabled = running) { Text(tr("停止", "Stop")) }
             }
             HintText(
-                "也可以在 B 站 App 直播间点“分享”，在系统分享面板里选“弹幕机”直接启动。\n" +
-                    "未登录时 B 站会把其他用户的昵称打码（如“张**”），这是 B 站的规则。\n" +
-                    "醒目留言 / 礼物 / 进场消息默认不显示，可在“设置 → 悬浮窗样式”里打开。",
+                tr("也可以在 B 站 App 直播间点“分享”，在系统分享面板里选“弹幕机”直接启动。\n", "You can also tap \"Share\" in a Bilibili live room and pick this app in the system share sheet to start directly.\n") +
+                    tr("未登录时 B 站会把其他用户的昵称打码（如“张**”），这是 B 站的规则。\n", "When not logged in, Bilibili masks other users' names (e.g. \"张**\"); this is Bilibili's rule.\n") +
+                    tr("醒目留言 / 礼物 / 进场消息默认不显示，可在“设置 → 悬浮窗样式”里打开。", "Super Chats / gifts / entry messages are hidden by default; turn them on in \"Settings → Overlay style\"."),
             )
         }
 
@@ -130,12 +131,12 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = { onNavigate(Screen.SETTINGS) }, modifier = Modifier.weight(1f)) {
-                Text("设置")
+                Text(tr("设置", "Settings"))
             }
             OutlinedButton(onClick = { onNavigate(Screen.HELP) }, modifier = Modifier.weight(1f)) {
-                Text("帮助与关于")
+                Text(tr("帮助与关于", "Help & about"))
             }
         }
-        HintText("设置：悬浮窗样式、过滤规则、B 站账号　帮助与关于：权限与后台保活、连接日志、检查更新")
+        HintText(tr("设置：悬浮窗样式、过滤规则、B 站账号　帮助与关于：权限与后台保活、连接日志、检查更新", "Settings: overlay style, filters, Bilibili account    Help & about: permissions & background, connection log, updates"))
     }
 }

@@ -45,6 +45,12 @@ private object Keys {
     val HEIGHT = intPreferencesKey("height_dp")
     val BUBBLE_X = intPreferencesKey("bubble_x")
     val BUBBLE_Y = intPreferencesKey("bubble_y")
+    val LAND_X = intPreferencesKey("land_x")
+    val LAND_Y = intPreferencesKey("land_y")
+    val LAND_WIDTH = intPreferencesKey("land_width_dp")
+    val LAND_HEIGHT = intPreferencesKey("land_height_dp")
+    val LAND_BUBBLE_X = intPreferencesKey("land_bubble_x")
+    val LAND_BUBBLE_Y = intPreferencesKey("land_bubble_y")
     val BG_ALPHA = floatPreferencesKey("bg_alpha")
     val TEXT_SIZE = floatPreferencesKey("text_size_sp")
     val TEXT_COLOR = intPreferencesKey("text_color")
@@ -70,6 +76,12 @@ private fun Preferences.toOverlaySettings(): OverlaySettings {
         heightDp = this[Keys.HEIGHT] ?: d.heightDp,
         bubbleX = this[Keys.BUBBLE_X] ?: d.bubbleX,
         bubbleY = this[Keys.BUBBLE_Y] ?: d.bubbleY,
+        landX = this[Keys.LAND_X],
+        landY = this[Keys.LAND_Y],
+        landWidthDp = this[Keys.LAND_WIDTH],
+        landHeightDp = this[Keys.LAND_HEIGHT],
+        landBubbleX = this[Keys.LAND_BUBBLE_X],
+        landBubbleY = this[Keys.LAND_BUBBLE_Y],
         bgAlpha = this[Keys.BG_ALPHA] ?: d.bgAlpha,
         textSizeSp = this[Keys.TEXT_SIZE] ?: d.textSizeSp,
         textColor = this[Keys.TEXT_COLOR] ?: d.textColor,
@@ -94,6 +106,12 @@ private fun OverlaySettings.writeTo(p: MutablePreferences) {
     p[Keys.HEIGHT] = heightDp
     p[Keys.BUBBLE_X] = bubbleX
     p[Keys.BUBBLE_Y] = bubbleY
+    setOrRemove(p, Keys.LAND_X, landX)
+    setOrRemove(p, Keys.LAND_Y, landY)
+    setOrRemove(p, Keys.LAND_WIDTH, landWidthDp)
+    setOrRemove(p, Keys.LAND_HEIGHT, landHeightDp)
+    setOrRemove(p, Keys.LAND_BUBBLE_X, landBubbleX)
+    setOrRemove(p, Keys.LAND_BUBBLE_Y, landBubbleY)
     p[Keys.BG_ALPHA] = bgAlpha
     p[Keys.TEXT_SIZE] = textSizeSp
     p[Keys.TEXT_COLOR] = textColor
@@ -108,4 +126,8 @@ private fun OverlaySettings.writeTo(p: MutablePreferences) {
     p[Keys.SHOW_ENTER] = showEnter
     p[Keys.HIDE_EMOTES] = hideEmotes
     p[Keys.SHOW_VIDEO_TIME] = showVideoTime
+}
+
+private fun setOrRemove(p: MutablePreferences, key: Preferences.Key<Int>, value: Int?) {
+    if (value == null) p.remove(key) else p[key] = value
 }

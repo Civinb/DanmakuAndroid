@@ -28,6 +28,7 @@ import java.io.IOException
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import com.civinb.danmuji.util.tr
 
 /** 下载好的安装包与手机上当前版本的对比结果；null 表示无法判断 */
 data class ApkCheck(
@@ -119,14 +120,14 @@ class UpdateManager(context: Context) {
             when (AppVersion.isNewer(release.tag, currentVersion)) {
                 true -> UpdateState.Available(release)
                 false -> UpdateState.UpToDate(release.tag)
-                null -> UpdateState.Failed("无法识别版本号（标签“${release.tag}”，当前 $currentVersion），标签请用 v1.2.3 格式", release)
+                null -> UpdateState.Failed(tr("无法识别版本号（标签“${release.tag}”，当前 $currentVersion），标签请用 v1.2.3 格式", "Can't parse the version (tag \"${release.tag}\", current $currentVersion); use tags like v1.2.3"), release)
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             UpdateState.Failed(e.message ?: e.javaClass.simpleName, null)
         }
-        DebugLog.log(TAG, "检查更新：当前 $currentVersion → ${describe(result)}")
+        DebugLog.log(TAG, tr("检查更新：当前 $currentVersion → ${describe(result)}", "Update check: current $currentVersion → ${describe(result)}"))
         _state.value = result
         return result
     }
@@ -139,11 +140,11 @@ class UpdateManager(context: Context) {
             .build()
         return client.newCall(request).await().use { resp ->
             when (resp.code) {
-                404 -> throw IOException("仓库还没有发布正式版本（Release）")
-                403, 429 -> throw IOException("GitHub 访问次数超限（未登录每小时 60 次），请稍后再试")
+                404 -> throw IOException(tr("仓库还没有发布正式版本（Release）", "The repository has no published release yet"))
+                403, 429 -> throw IOException(tr("GitHub 访问次数超限（未登录每小时 60 次），请稍后再试", "GitHub rate limit exceeded (60 requests/hour without login), please try again later"))
             }
-            if (!resp.isSuccessful) throw IOException("GitHub 返回 HTTP ${resp.code}")
-            val body = resp.body?.string() ?: throw IOException("GitHub 返回空内容")
+            if (!resp.isSuccessful) throw IOException(tr("GitHub 返回 HTTP ${resp.code}", "GitHub returned HTTP ${resp.code}"))
+            val body = resp.body?.string() ?: throw IOException(tr("GitHub 返回空内容", "GitHub returned an empty response"))
             ReleaseParser.parse(JSONObject(body))
         }
     }
@@ -158,7 +159,7 @@ class UpdateManager(context: Context) {
             else -> null
         } ?: return
         val apk = release.apk ?: run {
-            _state.value = UpdateState.Failed("这个 Release 没有附带 .apk 文件", release)
+            _state.value = UpdateState.Failed(tr("这个 Release 没有附带 .apk 文件", "This release has no .apk attached"), release)
             return
         }
         downloadJob?.cancel()
@@ -175,8 +176,8 @@ class UpdateManager(context: Context) {
                     .header("User-Agent", "DanmakuAndroid/$currentVersion")
                     .build()
                 client.newCall(request).await().use { resp ->
-                    if (!resp.isSuccessful) throw IOException("下载失败：HTTP ${resp.code}")
-                    val body = resp.body ?: throw IOException("下载失败：空响应")
+                    if (!resp.isSuccessful) throw IOException(tr("下载失败：HTTP ${resp.code}", "Download failed: HTTP ${resp.code}"))
+                    val body = resp.body ?: throw IOException(tr("下载失败：空响应", "Download failed: empty response"))
                     val total = body.contentLength().takeIf { it > 0 } ?: apk.size
                     body.byteStream().use { input ->
                         part.outputStream().use { out ->
@@ -199,15 +200,15 @@ class UpdateManager(context: Context) {
                     }
                 }
                 if (apk.size > 0 && part.length() != apk.size) {
-                    throw IOException("文件大小不符（${part.length()} / ${apk.size} 字节），请重试")
+                    throw IOException(tr("文件大小不符（${part.length()} / ${apk.size} 字节），请重试", "File size mismatch (${part.length()} / ${apk.size} bytes), please retry"))
                 }
                 apk.sha256?.let { expected ->
                     val actual = sha.digest().joinToString("") { "%02x".format(it) }
-                    if (actual != expected) throw IOException("SHA-256 校验失败，文件可能损坏，请重试")
+                    if (actual != expected) throw IOException(tr("SHA-256 校验失败，文件可能损坏，请重试", "SHA-256 check failed, the file may be corrupted, please retry"))
                 }
-                if (!part.renameTo(target)) throw IOException("保存安装包失败")
+                if (!part.renameTo(target)) throw IOException(tr("保存安装包失败", "Failed to save the package"))
                 val check = inspect(target)
-                DebugLog.log(TAG, "下载完成 ${target.name}（${target.length()} 字节）$check")
+                DebugLog.log(TAG, tr("下载完成 ${target.name}（${target.length()} 字节）$check", "Downloaded ${target.name} (${target.length()} bytes) $check"))
                 _state.value = UpdateState.Downloaded(release, target, check)
             } catch (e: CancellationException) {
                 part.delete()
@@ -215,7 +216,7 @@ class UpdateManager(context: Context) {
                 throw e
             } catch (e: Exception) {
                 part.delete()
-                DebugLog.log(TAG, "下载失败：${e.message}")
+                DebugLog.log(TAG, tr("下载失败：${e.message}", "Download failed: ${e.message}"))
                 _state.value = UpdateState.Failed(e.message ?: e.javaClass.simpleName, release)
             }
         }
@@ -245,7 +246,7 @@ class UpdateManager(context: Context) {
                 sameSignature = if (a.isEmpty() || b.isEmpty()) null else a.any { it in b },
             )
         } catch (e: Exception) {
-            DebugLog.log(TAG, "无法检查安装包：${e.message}")
+            DebugLog.log(TAG, tr("无法检查安装包：${e.message}", "Can't inspect the package: ${e.message}"))
             ApkCheck(null, null, null)
         }
     }
@@ -285,15 +286,15 @@ class UpdateManager(context: Context) {
             context.startActivity(intent)
             InstallResult.STARTED
         } catch (e: Exception) {
-            DebugLog.log(TAG, "打开安装器失败：${e.message}")
+            DebugLog.log(TAG, tr("打开安装器失败：${e.message}", "Failed to open the installer: ${e.message}"))
             InstallResult.FAILED
         }
     }
 
     private fun describe(s: UpdateState): String = when (s) {
-        is UpdateState.Available -> "有新版本 ${s.release.tag}（APK：${s.release.apk?.name ?: "无"}）"
-        is UpdateState.UpToDate -> "已是最新（最新 ${s.latestTag}）"
-        is UpdateState.Failed -> "失败：${s.message}"
+        is UpdateState.Available -> tr("有新版本 ${s.release.tag}（APK：${s.release.apk?.name ?: "无"}）", "New version ${s.release.tag} (APK: ${s.release.apk?.name ?: "none"})")
+        is UpdateState.UpToDate -> tr("已是最新（最新 ${s.latestTag}）", "Up to date (latest ${s.latestTag})")
+        is UpdateState.Failed -> tr("失败：${s.message}", "Failed: ${s.message}")
         else -> s.toString()
     }
 

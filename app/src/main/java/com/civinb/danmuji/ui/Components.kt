@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.civinb.danmuji.util.tr
 
 @Composable
 fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
@@ -60,7 +61,7 @@ fun StatusRow(label: String, ok: Boolean, actionText: String?, onAction: () -> U
         Column(Modifier.weight(1f)) {
             Text(label)
             Text(
-                if (ok) "已开启" else "未开启",
+                if (ok) tr("已开启", "On") else tr("未开启", "Off"),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
             )

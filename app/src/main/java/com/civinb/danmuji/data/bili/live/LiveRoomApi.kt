@@ -9,6 +9,7 @@ import com.civinb.danmuji.model.DanmakuKind
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONObject
+import com.civinb.danmuji.util.tr
 
 data class LiveRoomInfo(
     val roomId: Long,
@@ -70,7 +71,7 @@ class LiveRoomApi(private val http: BiliHttp, private val auth: BiliAuth) {
                 }
             }
         }
-        if (hosts.isEmpty()) throw BiliApiException(-1, "弹幕服务器列表为空")
+        if (hosts.isEmpty()) throw BiliApiException(-1, tr("弹幕服务器列表为空", "Danmaku server list is empty"))
         return DanmuConf(token = data.optString("token").ifEmpty { null }, hosts = hosts, degraded = false)
     }
 
@@ -105,7 +106,7 @@ class LiveRoomApi(private val http: BiliHttp, private val auth: BiliAuth) {
     private fun JSONObject.dataOrThrow(): JSONObject {
         val code = optInt("code", -1)
         if (code != 0) throw BiliApiException(code, optString("message"))
-        return optJSONObject("data") ?: throw BiliApiException(code, "缺少 data")
+        return optJSONObject("data") ?: throw BiliApiException(code, tr("缺少 data", "Missing data"))
     }
 
     private fun HttpUrl.withParams(params: Map<String, String>): HttpUrl {

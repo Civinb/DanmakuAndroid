@@ -8,6 +8,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Base64
 import java.util.Locale
+import com.civinb.danmuji.util.tr
 
 /**
  * 把直播信息流里的业务消息（JSON，含 cmd 字段）转换为统一的 [DanmakuItem]。
@@ -34,8 +35,8 @@ object LiveCommandParser {
             "LOG_IN_NOTICE" -> listOfNotNull(
                 obj.optJSONObject("data")?.str("notice_msg")?.let { system(it) },
             )
-            "LIVE" -> listOf(system("直播开始了"))
-            "PREPARING" -> listOf(system("主播已下播（准备中）"))
+            "LIVE" -> listOf(system(tr("直播开始了", "Live stream started")))
+            "PREPARING" -> listOf(system(tr("主播已下播（准备中）", "Streamer is offline (preparing)")))
             else -> emptyList()
         }
     }
@@ -124,7 +125,7 @@ object LiveCommandParser {
         return giftItem(
             uid = data.optLong("uid"),
             uname = data.str("uname"),
-            action = data.str("action") ?: "赠送",
+            action = data.str("action") ?: tr("赠送", "sent"),
             giftName = giftName,
             num = data.optInt("num", 1),
             coinType = data.str("coin_type"),
@@ -146,7 +147,7 @@ object LiveCommandParser {
                 giftItem(
                     uid = uid,
                     uname = uname,
-                    action = gift.string(18).ifEmpty { "赠送" },
+                    action = gift.string(18).ifEmpty { tr("赠送", "sent") },
                     giftName = giftName,
                     num = gift.int(3, 1),
                     coinType = gift.string(8),
@@ -162,7 +163,7 @@ object LiveCommandParser {
         return DanmakuItem(
             id = DanmakuIds.next(),
             kind = DanmakuKind.GIFT,
-            text = "开通了 $giftName ×${data.optInt("num", 1)}",
+            text = tr("开通了 $giftName ×${data.optInt("num", 1)}", "subscribed to $giftName ×${data.optInt("num", 1)}"),
             userName = data.str("username"),
             userId = data.optLong("uid"),
         )
@@ -179,7 +180,7 @@ object LiveCommandParser {
     ): DanmakuItem {
         // 1000 金瓜子 = 1 元（blivedm 注释）；银瓜子礼物不显示金额
         val yuan = if (coinType == "gold" && totalCoin > 0) {
-            String.format(Locale.US, "（¥%.1f）", totalCoin / 1000.0)
+            String.format(Locale.US, tr("（¥%.1f）", " (¥%.1f)"), totalCoin / 1000.0)
         } else {
             ""
         }
@@ -199,12 +200,12 @@ object LiveCommandParser {
         val pb = data?.str("pb") ?: return null
         val msg = ProtoMessage.parse(Base64.getDecoder().decode(pb))
         val text = when (msg.int(5)) {
-            1 -> "进入直播间"
-            2 -> "关注了主播"
-            3 -> "分享了直播间"
-            4 -> "特别关注了主播"
-            5 -> "与主播互粉了"
-            6 -> "为主播点赞了"
+            1 -> tr("进入直播间", "entered the room")
+            2 -> tr("关注了主播", "followed the streamer")
+            3 -> tr("分享了直播间", "shared the room")
+            4 -> tr("特别关注了主播", "special-followed the streamer")
+            5 -> tr("与主播互粉了", "became mutual followers with the streamer")
+            6 -> tr("为主播点赞了", "liked the stream")
             else -> return null
         }
         return DanmakuItem(

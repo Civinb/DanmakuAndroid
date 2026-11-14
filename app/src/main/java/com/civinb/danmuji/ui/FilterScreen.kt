@@ -36,6 +36,7 @@ import com.civinb.danmuji.filter.RuleType
 import com.civinb.danmuji.service.OverlayService
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.civinb.danmuji.util.tr
 
 @Composable
 fun FilterScreen() {
@@ -65,16 +66,16 @@ fun FilterScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         HintText(
-            "规则修改后立即生效。新增屏蔽规则时，悬浮窗里已显示的匹配弹幕也会被移除。" +
-                "也可以在悬浮窗里长按某条弹幕，选择“屏蔽此用户 / 屏蔽这句”。本次连接已过滤 $filtered 条。",
+            tr("规则修改后立即生效。新增屏蔽规则时，悬浮窗里已显示的匹配弹幕也会被移除。", "Changes take effect immediately. When you add a block rule, matching danmaku already shown in the overlay are removed too.") +
+                tr("也可以在悬浮窗里长按某条弹幕，选择“屏蔽此用户 / 屏蔽这句”。本次连接已过滤 $filtered 条。", "You can also long-press a danmaku in the overlay and choose \"Block this user / Block this text\". Filtered $filtered in this connection."),
         )
 
-        SectionCard("屏蔽规则（${blockRules.size}）") {
+        SectionCard(tr("屏蔽规则（${blockRules.size}）", "Block rules (${blockRules.size})")) {
             HintText(
-                "关键词：包含即屏蔽，不区分大小写。\n" +
-                    "正则：Java 正则语法，需要不区分大小写可在开头加 (?i)。\n" +
-                    "用户：填用户名或 UID。注意未登录时 B 站把昵称打码（如“张**”）、UID 为 0，" +
-                    "按打码名字屏蔽会同时屏蔽所有同样打码的用户。",
+                tr("关键词：包含即屏蔽，不区分大小写。\n", "Keyword: blocks if contained, case-insensitive.\n") +
+                    tr("正则：Java 正则语法，需要不区分大小写可在开头加 (?i)。\n", "Regex: Java regex syntax; add (?i) at the start for case-insensitive.\n") +
+                    tr("用户：填用户名或 UID。注意未登录时 B 站把昵称打码（如“张**”）、UID 为 0，", "User: username or UID. Note that without login Bilibili masks names (e.g. \"张**\") and UID is 0, ") +
+                    tr("按打码名字屏蔽会同时屏蔽所有同样打码的用户。", "so blocking a masked name also blocks every user with the same masked name."),
             )
             RuleEditor(onAdd = { type, pattern -> add(type, RuleAction.BLOCK, pattern) })
             RuleList(
@@ -84,14 +85,14 @@ fun FilterScreen() {
             )
         }
 
-        SectionCard("仅显示模式") {
+        SectionCard(tr("仅显示模式", "Show-only mode")) {
             SwitchRow(
-                "只显示命中下面规则的弹幕",
+                tr("只显示命中下面规则的弹幕", "Only show danmaku matching the rules below"),
                 s.onlyMode,
-                "例如只看同传：添加关键词“【同传】”，或正则 ^【.*】。只作用于普通弹幕，醒目留言/礼物/进场仍由各自开关决定。",
+                tr("例如只看同传：添加关键词“【同传】”，或正则 ^【.*】。只作用于普通弹幕，醒目留言/礼物/进场仍由各自开关决定。", "E.g. to see only live translations: add the keyword \"【同传】\" or the regex ^【.*】. Applies only to regular danmaku; Super Chats / gifts / entries follow their own toggles."),
             ) { v -> update { it.copy(onlyMode = v) } }
             if (s.onlyMode && onlyRules.none { it.enabled }) {
-                Text("当前没有启用的“仅显示”规则，普通弹幕将全部不显示。", color = MaterialTheme.colorScheme.error)
+                Text(tr("当前没有启用的“仅显示”规则，普通弹幕将全部不显示。", "No show-only rules are enabled, so no regular danmaku will be shown."), color = MaterialTheme.colorScheme.error)
             }
             RuleEditor(onAdd = { type, pattern -> add(type, RuleAction.ONLY, pattern) })
             RuleList(
@@ -101,13 +102,13 @@ fun FilterScreen() {
             )
         }
 
-        SectionCard("合并重复弹幕") {
+        SectionCard(tr("合并重复弹幕", "Merge duplicates")) {
             SwitchRow(
-                "合并短时间内的相同弹幕",
+                tr("合并短时间内的相同弹幕", "Merge identical danmaku within a short time"),
                 s.mergeDuplicates,
-                "时间窗口内内容相同的弹幕只显示一行，末尾显示 ×N（忽略大小写和首尾空格）。",
+                tr("时间窗口内内容相同的弹幕只显示一行，末尾显示 ×N（忽略大小写和首尾空格）。", "Identical danmaku within the time window are shown as one line with ×N at the end (ignoring case and leading/trailing spaces)."),
             ) { v -> update { it.copy(mergeDuplicates = v) } }
-            SettingSlider("时间窗口", s.mergeWindowSec.toFloat(), 3f..60f, 56, { "${it.roundToInt()} 秒" }) { v ->
+            SettingSlider(tr("时间窗口", "Time window"), s.mergeWindowSec.toFloat(), 3f..60f, 56, { tr("${it.roundToInt()} 秒", "${it.roundToInt()} s") }) { v ->
                 update { it.copy(mergeWindowSec = v.roundToInt()) }
             }
         }
@@ -122,7 +123,7 @@ private fun RuleEditor(onAdd: (RuleType, String) -> Unit) {
     val regexError = if (type == RuleType.REGEX && text.isNotEmpty()) FilterEngine.regexError(text) else null
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        listOf(RuleType.KEYWORD to "关键词", RuleType.REGEX to "正则", RuleType.USER to "用户").forEach { (t, label) ->
+        listOf(RuleType.KEYWORD to tr("关键词", "Keyword"), RuleType.REGEX to tr("正则", "Regex"), RuleType.USER to tr("用户", "User")).forEach { (t, label) ->
             RadioButton(selected = type == t, onClick = { type = t })
             Text(label, Modifier.padding(end = 6.dp))
         }
@@ -136,9 +137,9 @@ private fun RuleEditor(onAdd: (RuleType, String) -> Unit) {
             label = {
                 Text(
                     when (type) {
-                        RuleType.KEYWORD -> "关键词"
-                        RuleType.REGEX -> "正则表达式"
-                        RuleType.USER -> "用户名或 UID"
+                        RuleType.KEYWORD -> tr("关键词", "Keyword")
+                        RuleType.REGEX -> tr("正则表达式", "Regular expression")
+                        RuleType.USER -> tr("用户名或 UID", "Username or UID")
                     },
                 )
             },
@@ -150,10 +151,10 @@ private fun RuleEditor(onAdd: (RuleType, String) -> Unit) {
                 text = ""
             },
             enabled = text.isNotBlank() && regexError == null,
-        ) { Text("添加") }
+        ) { Text(tr("添加", "Add")) }
     }
     if (regexError != null) {
-        Text("正则有误：$regexError", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        Text(tr("正则有误：$regexError", "Invalid regex: $regexError"), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -164,7 +165,7 @@ private fun RuleList(
     onDelete: (FilterRule) -> Unit,
 ) {
     if (rules.isEmpty()) {
-        HintText("暂无规则")
+        HintText(tr("暂无规则", "No rules"))
         return
     }
     HorizontalDivider()
@@ -173,14 +174,14 @@ private fun RuleList(
             Column(Modifier.weight(1f)) {
                 Text(rule.pattern, maxLines = 2)
                 val kind = when (rule.type) {
-                    RuleType.KEYWORD -> "关键词"
-                    RuleType.REGEX -> "正则"
-                    RuleType.USER -> "用户"
+                    RuleType.KEYWORD -> tr("关键词", "Keyword")
+                    RuleType.REGEX -> tr("正则", "Regex")
+                    RuleType.USER -> tr("用户", "User")
                 }
                 HintText(if (rule.note.isNotEmpty()) "$kind · ${rule.note}" else kind)
             }
             Switch(checked = rule.enabled, onCheckedChange = { onToggle(rule, it) })
-            TextButton(onClick = { onDelete(rule) }) { Text("删除") }
+            TextButton(onClick = { onDelete(rule) }) { Text(tr("删除", "Delete")) }
         }
     }
 }

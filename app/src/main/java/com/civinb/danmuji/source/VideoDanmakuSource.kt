@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlin.math.max
+import com.civinb.danmuji.util.tr
 
 /**
  * 视频弹幕来源：取视频信息 → 按 6 分钟一段下载当前分P的全部弹幕 → 按播放进度（自动 / 手动）逐条放出。
@@ -33,33 +34,36 @@ class VideoDanmakuSource(
     private val target: LinkTarget.Video,
     private val bili: BiliClient,
     private val sync: VideoSync,
+    /** 开始时要显示的提示（例如登录已过期），在第一次清空列表之后显示 */
+    private val notice: String? = null,
 ) : DanmakuSource {
 
     private var lastSystemText = ""
 
     override fun events(): Flow<SourceEvent> = channelFlow {
-        send(SourceEvent.Status("正在获取视频信息…"))
-        DebugLog.log(TAG, if (bili.login.isLoggedIn()) "已登录" else "未登录（部分视频未登录时只返回部分弹幕）")
+        send(SourceEvent.Status(tr("正在获取视频信息…", "Getting video info…")))
+        DebugLog.log(TAG, if (bili.login.isLoggedIn()) tr("已登录", "Logged in") else tr("未登录（部分视频未登录时只返回部分弹幕）", "Not logged in (some videos return only part of the danmaku)"))
         val info: VideoInfo = try {
             bili.videoApi.getVideoInfo(target.bvid, target.aid)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            DebugLog.log(TAG, "视频信息获取失败：${e.message}")
-            send(SourceEvent.Status("视频信息获取失败"))
-            system("视频信息获取失败：${e.message}")
+            DebugLog.log(TAG, tr("视频信息获取失败：${e.message}", "Failed to get video info: ${e.message}"))
+            send(SourceEvent.Status(tr("视频信息获取失败", "Failed to get video info")))
+            system(tr("视频信息获取失败：${e.message}", "Failed to get video info: ${e.message}"))
             return@channelFlow
         }
         val pageNo = (target.page ?: 1).coerceIn(1, info.pages.size)
         var page: VideoPage = info.pages.firstOrNull { it.page == pageNo } ?: info.pages[pageNo - 1]
         if (info.pages.size > 1) {
-            DebugLog.log(TAG, "分P：" + info.pages.joinToString { "P${it.page}「${it.part}」${it.durationSec}s" })
+            DebugLog.log(TAG, tr("分P：", "Parts: ") + info.pages.joinToString { tr("P${it.page}「${it.part}」${it.durationSec}s", "P${it.page} \"${it.part}\" ${it.durationSec}s") })
         }
-        var hint: String? = if (info.pages.size > 1) {
-            "该视频有 ${info.pages.size} 个分P。自动同步模式下，在 B 站 App 里切换分P会自动跟随（依据会话标题或时长判断）。"
+        val pagesHint = if (info.pages.size > 1) {
+            tr("该视频有 ${info.pages.size} 个分P。自动同步模式下，在 B 站 App 里切换分P会自动跟随（依据会话标题或时长判断）。", "This video has ${info.pages.size} parts. In auto sync mode, switching parts in the Bilibili app is followed automatically (based on the session title or duration).")
         } else {
             null
         }
+        var hint: String? = listOfNotNull(notice, pagesHint).joinToString("\n").ifEmpty { null }
         while (true) {
             val (next, message) = playPage(info, page, hint)
             page = next
@@ -76,7 +80,7 @@ class VideoDanmakuSource(
         val durationMs = page.durationSec * 1000
         val videoName = info.title.ifEmpty { page.part.ifEmpty { info.bvid.ifEmpty { "av${info.aid}" } } }
         val label = if (info.pages.size > 1) "P${page.page} ${page.part}" else videoName
-        DebugLog.log(TAG, "视频 ${info.bvid} aid=${info.aid} P${page.page} cid=${page.cid} 时长 ${page.durationSec}s")
+        DebugLog.log(TAG, tr("视频 ${info.bvid} aid=${info.aid} P${page.page} cid=${page.cid} 时长 ${page.durationSec}s", "Video ${info.bvid} aid=${info.aid} P${page.page} cid=${page.cid} duration ${page.durationSec}s"))
 
         sync.startVideo(durationMs)
         val timeline = VideoTimeline()
@@ -99,7 +103,7 @@ class VideoDanmakuSource(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        DebugLog.log(TAG, "第 ${idx + 1} 段第 $attempt 次失败：${e.message}")
+                        DebugLog.log(TAG, tr("第 ${idx + 1} 段第 $attempt 次失败：${e.message}", "Segment ${idx + 1} attempt $attempt failed: ${e.message}"))
                         delay(1_000L * attempt)
                     }
                 }
@@ -108,16 +112,16 @@ class VideoDanmakuSource(
                 } else {
                     timeline.addSegment(list)
                     player.onSegmentLoaded(idx * VideoApi.SEGMENT_MS, (idx + 1) * VideoApi.SEGMENT_MS)
-                    DebugLog.log(TAG, "第 ${idx + 1}/$total 段：${list.size} 条")
+                    DebugLog.log(TAG, tr("第 ${idx + 1}/$total 段：${list.size} 条", "Segment ${idx + 1}/$total: ${list.size} danmaku"))
                 }
                 loaded++
                 delay(SEGMENT_INTERVAL_MS)
             }
             system(
                 if (failed == 0) {
-                    "弹幕加载完成，共 ${timeline.size} 条"
+                    tr("弹幕加载完成，共 ${timeline.size} 条", "Danmaku loaded, ${timeline.size} in total")
                 } else {
-                    "弹幕加载完成，共 ${timeline.size} 条（$failed 段加载失败）"
+                    tr("弹幕加载完成，共 ${timeline.size} 条（$failed 段加载失败）", "Danmaku loaded, ${timeline.size} in total ($failed segments failed)")
                 },
             )
         }
@@ -132,18 +136,18 @@ class VideoDanmakuSource(
 
                 // 记录媒体会话报告的标题/时长（变化时），便于核对分P判断依据
                 if (st.mode == SyncMode.AUTO && st.autoStatus == AutoStatus.OK) {
-                    val session = "标题「${st.sessionTitle.orEmpty()}」时长 ${st.sessionDurationMs / 1000}s"
+                    val session = tr("标题「${st.sessionTitle.orEmpty()}」时长 ${st.sessionDurationMs / 1000}s", "title \"${st.sessionTitle.orEmpty()}\" duration ${st.sessionDurationMs / 1000}s")
                     if (session != lastSession) {
                         lastSession = session
-                        DebugLog.log(TAG, "媒体会话：$session")
+                        DebugLog.log(TAG, tr("媒体会话：$session", "Media session: $session"))
                     }
                     // 每秒检查一次是否换了分P
                     if (info.pages.size > 1 && ticks % 4 == 0) {
                         val detected = detector.observe(st.sessionTitle, st.sessionDurationMs)
                         if (detected != null && detected.cid != page.cid) {
-                            DebugLog.log(TAG, "检测到 B 站切换到 P${detected.page}")
+                            DebugLog.log(TAG, tr("检测到 B 站切换到 P${detected.page}", "Detected Bilibili switched to P${detected.page}"))
                             loader.cancel()
-                            return detected to "检测到 B 站切换到 P${detected.page}「${detected.part}」，已切换弹幕"
+                            return detected to tr("检测到 B 站切换到 P${detected.page}「${detected.part}」，已切换弹幕", "Detected Bilibili switched to P${detected.page} \"${detected.part}\", danmaku switched")
                         }
                     }
                 }
@@ -194,11 +198,11 @@ class VideoDanmakuSource(
     }
 
     private fun statusText(st: SyncState): String = when (st.mode) {
-        SyncMode.MANUAL -> "手动同步"
+        SyncMode.MANUAL -> tr("手动同步", "Manual sync")
         SyncMode.AUTO -> when (st.autoStatus) {
-            AutoStatus.OK -> "自动同步"
-            AutoStatus.NO_PERMISSION -> "自动同步需要通知使用权"
-            AutoStatus.NO_SESSION, null -> "未检测到 B 站播放"
+            AutoStatus.OK -> tr("自动同步", "Auto sync")
+            AutoStatus.NO_PERMISSION -> tr("自动同步需要通知使用权", "Auto sync needs notification access")
+            AutoStatus.NO_SESSION, null -> tr("未检测到 B 站播放", "No Bilibili playback detected")
         }
     }
 

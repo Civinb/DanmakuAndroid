@@ -24,14 +24,14 @@ class NetworkMonitor(context: Context) {
             override fun onAvailable(network: Network) {
                 val handle = network.networkHandle
                 if (_state.value.handle != handle || !_state.value.available) {
-                    DebugLog.log(TAG, "默认网络变为 $handle")
+                    DebugLog.log(TAG, tr("默认网络变为 $handle", "Default network changed to $handle"))
                 }
                 _state.value = NetState(true, handle)
             }
 
             override fun onLost(network: Network) {
                 if (_state.value.handle == network.networkHandle) {
-                    DebugLog.log(TAG, "网络断开")
+                    DebugLog.log(TAG, tr("网络断开", "Network lost"))
                     _state.value = NetState(false, 0)
                 }
             }

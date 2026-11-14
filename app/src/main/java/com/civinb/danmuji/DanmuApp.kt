@@ -10,10 +10,12 @@ import com.civinb.danmuji.settings.FilterRepository
 import com.civinb.danmuji.settings.SettingsRepository
 import com.civinb.danmuji.update.UpdateManager
 import com.civinb.danmuji.util.DebugLog
+import com.civinb.danmuji.util.LanguageManager
 import com.civinb.danmuji.util.NetworkMonitor
 import com.civinb.danmuji.video.MediaRemote
 import com.civinb.danmuji.video.MediaSessionReader
 import com.civinb.danmuji.video.VideoSync
+import com.civinb.danmuji.util.tr
 
 class DanmuApp : Application() {
 
@@ -34,6 +36,7 @@ class DanmuApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        LanguageManager.apply(this)
         DebugLog.sink = { tag, msg -> Log.d("Danmuji/$tag", msg) }
         settingsRepository = SettingsRepository(this)
         filterRepository = FilterRepository(this)
@@ -50,10 +53,10 @@ class DanmuApp : Application() {
         val nm = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_OVERLAY,
-            getString(R.string.channel_overlay),
+            tr("悬浮弹幕", "Floating danmaku"),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "悬浮弹幕运行状态与快捷操作"
+            description = tr("悬浮弹幕运行状态与快捷操作", "Floating danmaku status and quick actions")
             setShowBadge(false)
         }
         nm.createNotificationChannel(channel)

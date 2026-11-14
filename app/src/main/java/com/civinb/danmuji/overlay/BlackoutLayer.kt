@@ -17,6 +17,7 @@ import android.widget.TextView
 import com.civinb.danmuji.R
 import com.civinb.danmuji.video.MediaStatus
 import kotlin.math.roundToInt
+import com.civinb.danmuji.util.tr
 
 /**
  * 黑屏背景：一个全屏纯黑的悬浮窗口，放在弹幕面板下面、B 站 App 上面。
@@ -72,18 +73,18 @@ class BlackoutLayer(
         gravity = Gravity.CENTER
         maxLines = 2
     }
-    private val btnBack = textButton("−10 秒") { seek(-SEEK_STEP_MS) }
+    private val btnBack = textButton(tr("−10 秒", "−10 s")) { seek(-SEEK_STEP_MS) }
     private val btnPlay = ImageButton(context).apply {
         setImageResource(R.drawable.ic_play)
         scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
         val pad = dp(10)
         setPadding(pad, pad, pad, pad)
         background = null
-        contentDescription = context.getString(R.string.video_play)
+        contentDescription = tr("播放/暂停", "Play/Pause")
         setOnClickListener { togglePlay() }
     }
-    private val btnFwd = textButton("+10 秒") { seek(SEEK_STEP_MS) }
-    private val btnExit = textButton("退出黑屏") { callbacks.onExitBlackout() }
+    private val btnFwd = textButton(tr("+10 秒", "+10 s")) { seek(SEEK_STEP_MS) }
+    private val btnExit = textButton(tr("退出黑屏", "Exit blackout")) { callbacks.onExitBlackout() }
 
     private val controls = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
@@ -162,14 +163,14 @@ class BlackoutLayer(
 
     private fun togglePlay() {
         scheduleHide()
-        if (!callbacks.onTogglePlay()) showMessage("未检测到 B 站播放")
+        if (!callbacks.onTogglePlay()) showMessage(tr("未检测到 B 站播放", "No Bilibili playback detected"))
         // 给 B 站一点时间更新播放状态
         view.postDelayed({ refreshStatus() }, 300)
     }
 
     private fun seek(deltaMs: Long) {
         scheduleHide()
-        if (!callbacks.onSeekBy(deltaMs)) showMessage("B 站当前播放不支持跳转")
+        if (!callbacks.onSeekBy(deltaMs)) showMessage(tr("B 站当前播放不支持跳转", "Current Bilibili playback doesn't support seeking"))
         view.postDelayed({ refreshStatus() }, 300)
     }
 
@@ -187,7 +188,7 @@ class BlackoutLayer(
         if (s != null) btnPlay.setImageResource(if (s.playing) R.drawable.ic_pause else R.drawable.ic_play)
         if (System.currentTimeMillis() < messageUntil) return
         info.text = if (s == null) {
-            "未检测到 B 站播放（播放控制需要“通知使用权”）"
+            tr("未检测到 B 站播放（播放控制需要“通知使用权”）", "No Bilibili playback detected (playback control needs \"Notification access\")")
         } else {
             val time = if (s.durationMs > 0) "${fmt(s.positionMs)} / ${fmt(s.durationMs)}" else fmt(s.positionMs)
             listOfNotNull(s.title?.takeIf { it.isNotBlank() }, time).joinToString("\n")

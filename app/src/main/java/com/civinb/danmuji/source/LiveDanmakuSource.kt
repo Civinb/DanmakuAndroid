@@ -35,6 +35,7 @@ import org.brotli.dec.BrotliInputStream
 import org.json.JSONObject
 import kotlin.math.max
 import kotlin.math.min
+import com.civinb.danmuji.util.tr
 
 /**
  * B 站直播弹幕来源。
@@ -72,25 +73,25 @@ class LiveDanmakuSource(
 
     override fun events(): Flow<SourceEvent> = channelFlow {
         val room = loadRoom() ?: return@channelFlow
-        val label = room.title.ifEmpty { "直播间 ${room.roomId}" }
-        DebugLog.log(TAG, "房间 ${room.roomId}（短号 ${room.shortId}）主播 ${room.ownerUid} 状态 ${room.liveStatus}")
-        if (room.liveStatus != 1) systemItem("主播当前未开播，开播后会自动显示弹幕")
+        val label = room.title.ifEmpty { tr("直播间 ${room.roomId}", "Live room ${room.roomId}") }
+        DebugLog.log(TAG, tr("房间 ${room.roomId}（短号 ${room.shortId}）主播 ${room.ownerUid} 状态 ${room.liveStatus}", "Room ${room.roomId} (short ID ${room.shortId}) streamer ${room.ownerUid} status ${room.liveStatus}"))
+        if (room.liveStatus != 1) systemItem(tr("主播当前未开播，开播后会自动显示弹幕", "The streamer isn't live yet; danmaku will appear automatically once the stream starts"))
 
         // 连接前先显示最近的历史弹幕
         try {
             val history = api.getRecentDanmaku(room.roomId)
             if (history.isNotEmpty()) {
                 history.forEach { send(SourceEvent.Item(it)) }
-                systemItem("—— 以上是最近的历史弹幕 ——")
+                systemItem(tr("—— 以上是最近的历史弹幕 ——", "—— Recent danmaku above ——"))
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            DebugLog.log(TAG, "获取历史弹幕失败：${e.message}")
+            DebugLog.log(TAG, tr("获取历史弹幕失败：${e.message}", "Failed to load recent danmaku: ${e.message}"))
         }
 
         val buvid = bili.auth.ensureBuvid()
-        DebugLog.log(TAG, if (bili.login.isLoggedIn()) "使用已登录身份连接（UID ${bili.login.mid()}）" else "未登录连接（他人昵称会被打码）")
+        DebugLog.log(TAG, if (bili.login.isLoggedIn()) tr("使用已登录身份连接（UID ${bili.login.mid()}）", "Connecting as logged-in user (UID ${bili.login.mid()})") else tr("未登录连接（他人昵称会被打码）", "Connecting as guest (other users' names will be masked)"))
         var conf: DanmuConf? = null
         var attempt = 0
         var everConnected = false
@@ -98,28 +99,28 @@ class LiveDanmakuSource(
 
         while (true) {
             if (!network.isAvailable) {
-                send(SourceEvent.Status("$label · 等待网络…"))
+                send(SourceEvent.Status(tr("$label · 等待网络…", "$label · Waiting for network…")))
                 network.awaitAvailable()
             }
             if (conf == null) {
-                send(SourceEvent.Status("$label · 获取弹幕服务器…"))
+                send(SourceEvent.Status(tr("$label · 获取弹幕服务器…", "$label · Getting danmaku servers…")))
                 conf = try {
                     api.getDanmuConf(room.roomId).also {
-                        DebugLog.log(TAG, "getDanmuInfo 成功，服务器 ${it.hosts.size} 个")
+                        DebugLog.log(TAG, tr("getDanmuInfo 成功，服务器 ${it.hosts.size} 个", "getDanmuInfo succeeded, ${it.hosts.size} servers"))
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    DebugLog.log(TAG, "getDanmuInfo 失败（${e.message}），降级为默认服务器、不带 token")
-                    systemItem("获取弹幕服务器失败（${e.message}），尝试降级连接")
+                    DebugLog.log(TAG, tr("getDanmuInfo 失败（${e.message}），降级为默认服务器、不带 token", "getDanmuInfo failed (${e.message}), falling back to the default server without token"))
+                    systemItem(tr("获取弹幕服务器失败（${e.message}），尝试降级连接", "Failed to get danmaku servers (${e.message}), trying fallback connection"))
                     LiveRoomApi.FALLBACK
                 }
                 attempt = 0
             }
             val c = conf!!
             val host = c.hosts[attempt % c.hosts.size]
-            send(SourceEvent.Status("$label · 连接中…"))
-            DebugLog.log(TAG, "连接 ${host.host}:${host.wssPort}（第 ${attempt + 1} 次）")
+            send(SourceEvent.Status(tr("$label · 连接中…", "$label · Connecting…")))
+            DebugLog.log(TAG, tr("连接 ${host.host}:${host.wssPort}（第 ${attempt + 1} 次）", "Connecting to ${host.host}:${host.wssPort} (attempt ${attempt + 1})"))
 
             val result = runSession(host, c, room, buvid, label, everConnected)
             attempt++
@@ -127,11 +128,11 @@ class LiveDanmakuSource(
                 everConnected = true
                 backoffMs = INITIAL_BACKOFF_MS
             }
-            DebugLog.log(TAG, "连接结束：${result.reason} ${result.detail}")
+            DebugLog.log(TAG, tr("连接结束：${result.reason} ${result.detail}", "Connection ended: ${result.reason} ${result.detail}"))
 
             when (result.reason) {
                 EndReason.NETWORK_CHANGED -> {
-                    systemItem("网络已切换，正在重连")
+                    systemItem(tr("网络已切换，正在重连", "Network changed, reconnecting"))
                     backoffMs = INITIAL_BACKOFF_MS
                     continue // 立即重连
                 }
@@ -143,8 +144,8 @@ class LiveDanmakuSource(
 
             val waitMs = backoffMs
             backoffMs = min(backoffMs * 2, MAX_BACKOFF_MS)
-            if (result.wasConnected) systemItem("连接断开，${waitMs / 1000} 秒后重连")
-            send(SourceEvent.Status("$label · 连接断开，${waitMs / 1000} 秒后重连"))
+            if (result.wasConnected) systemItem(tr("连接断开，${waitMs / 1000} 秒后重连", "Disconnected, reconnecting in ${waitMs / 1000} s"))
+            send(SourceEvent.Status(tr("$label · 连接断开，${waitMs / 1000} 秒后重连", "$label · Disconnected, reconnecting in ${waitMs / 1000} s")))
             // 等待退避时间；期间网络发生变化就提前重连
             val handle = network.state.value.handle
             withTimeoutOrNull(waitMs) {
@@ -158,22 +159,22 @@ class LiveDanmakuSource(
         var backoff = INITIAL_BACKOFF_MS
         while (true) {
             if (!network.isAvailable) {
-                send(SourceEvent.Status("等待网络…"))
+                send(SourceEvent.Status(tr("等待网络…", "Waiting for network…")))
                 network.awaitAvailable()
             }
-            send(SourceEvent.Status("正在获取直播间 $roomInput 的信息…"))
+            send(SourceEvent.Status(tr("正在获取直播间 $roomInput 的信息…", "Getting info for live room $roomInput…")))
             try {
                 return api.getRoomInfo(roomInput)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BiliApiException) {
-                DebugLog.log(TAG, "房间信息获取失败：${e.message}")
-                send(SourceEvent.Status("直播间 $roomInput 获取失败"))
-                systemItem("直播间 $roomInput 获取失败：${e.message}")
+                DebugLog.log(TAG, tr("房间信息获取失败：${e.message}", "Failed to get room info: ${e.message}"))
+                send(SourceEvent.Status(tr("直播间 $roomInput 获取失败", "Failed to load live room $roomInput")))
+                systemItem(tr("直播间 $roomInput 获取失败：${e.message}", "Failed to load live room $roomInput: ${e.message}"))
                 return null
             } catch (e: Exception) {
-                DebugLog.log(TAG, "房间信息网络错误：${e.message}")
-                send(SourceEvent.Status("网络错误，${backoff / 1000} 秒后重试"))
+                DebugLog.log(TAG, tr("房间信息网络错误：${e.message}", "Network error getting room info: ${e.message}"))
+                send(SourceEvent.Status(tr("网络错误，${backoff / 1000} 秒后重试", "Network error, retrying in ${backoff / 1000} s")))
                 delay(backoff)
                 backoff = min(backoff * 2, MAX_BACKOFF_MS)
             }
@@ -205,15 +206,15 @@ class LiveDanmakuSource(
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 webSocket.close(1000, null)
-                events.trySend(WsEvent.Closed("服务器关闭连接（$code $reason）"))
+                events.trySend(WsEvent.Closed(tr("服务器关闭连接（$code $reason）", "Server closed the connection ($code $reason)")))
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                events.trySend(WsEvent.Closed("连接已关闭（$code）"))
+                events.trySend(WsEvent.Closed(tr("连接已关闭（$code）", "Connection closed ($code)")))
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                events.trySend(WsEvent.Closed("连接失败：${t.message ?: t.javaClass.simpleName}"))
+                events.trySend(WsEvent.Closed(tr("连接失败：${t.message ?: t.javaClass.simpleName}", "Connection failed: ${t.message ?: t.javaClass.simpleName}")))
             }
         })
 
@@ -229,7 +230,7 @@ class LiveDanmakuSource(
             while (true) {
                 val timeout = if (authed) RECEIVE_TIMEOUT_MS else CONNECT_TIMEOUT_MS
                 val ev = withTimeoutOrNull(timeout) { events.receive() }
-                    ?: return SessionResult(EndReason.TIMEOUT, "${timeout / 1000} 秒没有收到数据", authed)
+                    ?: return SessionResult(EndReason.TIMEOUT, tr("${timeout / 1000} 秒没有收到数据", "No data received for ${timeout / 1000} s"), authed)
                 when (ev) {
                     WsEvent.Open -> {
                         ws.send(authPacket(room, conf, buvid).toByteString())
@@ -238,7 +239,7 @@ class LiveDanmakuSource(
                         val packets = try {
                             LivePacketCodec.decode(ev.data, brotli)
                         } catch (e: Exception) {
-                            DebugLog.log(TAG, "数据包解析失败：${e.message}")
+                            DebugLog.log(TAG, tr("数据包解析失败：${e.message}", "Failed to parse packet: ${e.message}"))
                             emptyList()
                         }
                         for (p in packets) {
@@ -250,7 +251,7 @@ class LiveDanmakuSource(
                                         -1
                                     }
                                     if (code != 0) {
-                                        return SessionResult(EndReason.AUTH_FAILED, "认证失败 code=$code", false)
+                                        return SessionResult(EndReason.AUTH_FAILED, tr("认证失败 code=$code", "Authentication failed code=$code"), false)
                                     }
                                     authed = true
                                     ws.send(heartbeatPacket())
@@ -260,16 +261,16 @@ class LiveDanmakuSource(
                                             ws.send(heartbeatPacket())
                                         }
                                     }
-                                    DebugLog.log(TAG, "认证成功${if (conf.degraded) "（降级模式）" else ""}")
-                                    send(SourceEvent.Status("$label · 已连接"))
-                                    systemItem(if (isReconnect) "已重新连接" else "已连接弹幕服务器")
+                                    DebugLog.log(TAG, tr("认证成功${if (conf.degraded) "（降级模式）" else ""}", "Authenticated${if (conf.degraded) " (fallback mode)" else ""}"))
+                                    send(SourceEvent.Status(tr("$label · 已连接", "$label · Connected")))
+                                    systemItem(if (isReconnect) tr("已重新连接", "Reconnected") else tr("已连接弹幕服务器", "Connected to danmaku server"))
                                 }
                                 is Packet.Command -> {
                                     val items = try {
                                         LiveCommandParser.parse(p.json)
                                     } catch (e: Exception) {
                                         if (parseErrors++ < 5) {
-                                            DebugLog.log(TAG, "消息解析失败：${e.message}；${p.json.take(200)}")
+                                            DebugLog.log(TAG, tr("消息解析失败：${e.message}；${p.json.take(200)}", "Failed to parse message: ${e.message}; ${p.json.take(200)}"))
                                         }
                                         emptyList()
                                     }

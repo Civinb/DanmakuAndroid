@@ -19,9 +19,10 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import com.civinb.danmuji.util.tr
 
 /** B 站接口返回 code != 0 */
-class BiliApiException(val code: Int, message: String) : IOException("B站接口错误 $code：$message")
+class BiliApiException(val code: Int, message: String) : IOException(tr("B站接口错误 $code：$message", "Bilibili API error $code: $message"))
 
 /** HTTP 状态码不是 2xx（412 通常是触发了风控） */
 class BiliHttpException(val status: Int) : IOException("HTTP $status")

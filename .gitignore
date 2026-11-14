@@ -10,3 +10,7 @@
 .cxx/
 app/release/
 docs/
+# 正式签名信息与密钥文件
+keystore.properties
+*.jks
+*.keystore

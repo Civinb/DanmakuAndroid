@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 默认（英文）。中文在 values-zh/strings.xml。应用内的大部分文字在代码里用 tr(中文, 英文) 切换，这里只有系统界面和布局用到的。 -->
 <resources>
-    <string name="app_name">弹幕机</string>
-    <string name="probe_listener_label">弹幕机 · 视频进度同步</string>
-    <string name="blackout">黑屏背景</string>
-    <string name="lock">锁定（触摸穿透）</string>
-    <string name="unlock">解锁</string>
-    <string name="collapse">折叠</string>
-    <string name="close">关闭</string>
-    <string name="resize">调整大小</string>
-    <string name="channel_overlay">悬浮弹幕</string>
-    <string name="block_user">屏蔽此用户</string>
-    <string name="block_text">屏蔽这句</string>
-    <string name="cancel">取消</string>
-    <string name="video_auto">自动</string>
-    <string name="video_manual">手动</string>
-    <string name="video_play">播放/暂停</string>
+    <string name="app_name">Danmaku Viewer</string>
+    <string name="probe_listener_label">Danmaku Viewer · video progress sync</string>
+    <string name="blackout">Blackout background</string>
+    <string name="lock">Lock (touch pass-through)</string>
+    <string name="unlock">Unlock</string>
+    <string name="collapse">Collapse</string>
+    <string name="close">Close</string>
+    <string name="resize">Resize</string>
+    <string name="channel_overlay">Floating danmaku</string>
+    <string name="block_user">Block this user</string>
+    <string name="block_text">Block this text</string>
+    <string name="cancel">Cancel</string>
+    <string name="video_auto">Auto</string>
+    <string name="video_manual">Manual</string>
+    <string name="video_play">Play/Pause</string>
 </resources>

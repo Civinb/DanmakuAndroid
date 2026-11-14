@@ -42,13 +42,17 @@ import kotlinx.coroutines.flow.Flow
 import com.civinb.danmuji.data.bili.link.LinkParser
 import com.civinb.danmuji.data.bili.link.LinkTarget
 import com.civinb.danmuji.service.OverlayService
+import com.civinb.danmuji.util.LanguageManager
 import com.civinb.danmuji.util.LastInput
 import com.civinb.danmuji.util.Permissions
 import com.civinb.danmuji.util.ShareInbox
+import com.civinb.danmuji.util.tr
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 每次创建界面时按当前语言设置刷新（系统语言或“应用语言”改变后，系统会重建界面）
+        LanguageManager.apply(this)
         setContent {
             DanmujiTheme {
                 AppRoot()
@@ -77,27 +81,31 @@ class MainActivity : ComponentActivity() {
             ShareInbox.text.value = text
         }
         if (!Permissions.canDrawOverlays(this)) {
-            Toast.makeText(this, "请先授予悬浮窗权限，再点“连接”", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, tr("请先授予悬浮窗权限，再点“连接”", "Please grant the overlay permission first, then tap \"Connect\""), Toast.LENGTH_LONG).show()
             return
         }
         OverlayService.startInput(this, text)
-        Toast.makeText(this, "弹幕机：正在连接…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, tr("弹幕机：正在连接…", "Danmaku Viewer: connecting…"), Toast.LENGTH_SHORT).show()
         moveTaskToBack(true)
     }
 }
 
 /** 页面及其上一级（返回时回到 parent） */
-enum class Screen(val title: String, val parentName: String?) {
-    HOME("弹幕机", null),
-    SETTINGS("设置", "HOME"),
-    HELP("帮助与关于", "HOME"),
-    STYLE("悬浮窗样式", "SETTINGS"),
-    FILTER("过滤规则", "SETTINGS"),
-    ACCOUNT("B 站账号", "SETTINGS"),
-    GUIDE("权限与后台保活", "HELP"),
-    LOG("连接日志", "HELP"),
-    ABOUT("关于与更新", "HELP"),
+enum class Screen(private val zh: String, private val en: String, val parentName: String?) {
+    HOME("弹幕机", "Danmaku Viewer", null),
+    SETTINGS("设置", "Settings", "HOME"),
+    HELP("帮助与关于", "Help & about", "HOME"),
+    STYLE("悬浮窗样式", "Overlay style", "SETTINGS"),
+    FILTER("过滤规则", "Filters", "SETTINGS"),
+    ACCOUNT("B 站账号", "Bilibili account", "SETTINGS"),
+    LANGUAGE("语言", "Language", "SETTINGS"),
+    GUIDE("权限与后台保活", "Permissions & background", "HELP"),
+    LOG("连接日志", "Connection log", "HELP"),
+    ABOUT("关于与更新", "About & updates", "HELP"),
     ;
+
+    /** 页面标题（按当前界面语言） */
+    val title: String get() = tr(zh, en)
 
     val parent: Screen get() = parentName?.let { Screen.valueOf(it) } ?: HOME
 }
@@ -141,23 +149,23 @@ fun AppRoot() {
     prompt?.let { release ->
         AlertDialog(
             onDismissRequest = { updates.dismissPrompt() },
-            title = { Text("发现新版本 ${release.tag}") },
+            title = { Text(tr("发现新版本 ${release.tag}", "New version ${release.tag}")) },
             text = {
                 Text(
                     (if (release.notes.isNotBlank()) release.notes.trim().take(400) + "\n\n" else "") +
-                        "当前版本 ${updates.currentVersion}",
+                        tr("当前版本 ${updates.currentVersion}", "Current version ${updates.currentVersion}"),
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     updates.dismissPrompt()
                     screen = Screen.ABOUT
-                }) { Text("查看") }
+                }) { Text(tr("查看", "View")) }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = { updates.skip(release) }) { Text("跳过此版本") }
-                    TextButton(onClick = { updates.dismissPrompt() }) { Text("以后再说") }
+                    TextButton(onClick = { updates.skip(release) }) { Text(tr("跳过此版本", "Skip this version")) }
+                    TextButton(onClick = { updates.dismissPrompt() }) { Text(tr("以后再说", "Later")) }
                 }
             },
         )
@@ -202,7 +210,7 @@ private fun ScreenScaffold(screen: Screen, onNavigate: (Screen) -> Unit, modifie
                 title = { Text(screen.title) },
                 navigationIcon = {
                     if (screen != Screen.HOME) {
-                        TextButton(onClick = { onNavigate(screen.parent) }) { Text("返回") }
+                        TextButton(onClick = { onNavigate(screen.parent) }) { Text(tr("返回", "Back")) }
                     }
                 },
             )
@@ -220,6 +228,7 @@ private fun ScreenScaffold(screen: Screen, onNavigate: (Screen) -> Unit, modifie
                 Screen.STYLE -> StyleScreen()
                 Screen.FILTER -> FilterScreen()
                 Screen.ACCOUNT -> AccountScreen()
+                Screen.LANGUAGE -> LanguageScreen()
                 Screen.GUIDE -> GuideScreen()
                 Screen.LOG -> LogScreen()
                 Screen.ABOUT -> AboutScreen()

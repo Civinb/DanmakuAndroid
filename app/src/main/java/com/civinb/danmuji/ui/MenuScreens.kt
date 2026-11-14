@@ -13,16 +13,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.civinb.danmuji.util.tr
 
-/** 首页“设置”入口：悬浮窗样式、过滤规则、B 站账号 */
+/** 首页“设置”入口：悬浮窗样式、过滤规则、B 站账号、语言 */
 @Composable
 fun SettingsMenuScreen(onNavigate: (Screen) -> Unit) {
     MenuList(
         onNavigate,
         listOf(
-            Screen.STYLE to "透明度、字号、颜色；醒目留言 / 礼物 / 进场开关；隐藏直播间表情",
-            Screen.FILTER to "屏蔽关键词 / 正则 / 用户，仅显示模式，合并重复弹幕",
-            Screen.ACCOUNT to "可选扫码登录（未登录时部分视频弹幕不全、直播昵称打码）",
+            Screen.STYLE to tr("透明度、字号、颜色；醒目留言 / 礼物 / 进场开关；隐藏直播间表情", "Opacity, text size, color; Super Chat / gift / entry toggles; hide live-room emotes"),
+            Screen.FILTER to tr("屏蔽关键词 / 正则 / 用户，仅显示模式，合并重复弹幕", "Block keywords / regex / users, show-only mode, merge duplicate danmaku"),
+            Screen.ACCOUNT to tr("可选扫码登录（未登录时部分视频弹幕不全、直播昵称打码）", "Optional QR login (without login some video danmaku are incomplete and live usernames are masked)"),
+            Screen.LANGUAGE to tr("跟随系统 / 中文 / English", "Follow system / 中文 / English"),
         ),
     )
 }
@@ -33,9 +35,9 @@ fun HelpMenuScreen(onNavigate: (Screen) -> Unit) {
     MenuList(
         onNavigate,
         listOf(
-            Screen.GUIDE to "国产 ROM 必看：自启动、电池优化、后台锁定",
-            Screen.LOG to "出问题时复制给开发者",
-            Screen.ABOUT to "当前版本、GitHub 仓库、检查更新",
+            Screen.GUIDE to tr("国产 ROM 必看：自启动、电池优化、后台锁定", "Must-read on Chinese ROMs: auto-start, battery optimization, lock in recents"),
+            Screen.LOG to tr("出问题时复制给开发者", "Copy and send to the developer when something goes wrong"),
+            Screen.ABOUT to tr("当前版本、GitHub 仓库、检查更新", "Current version, GitHub repository, check for updates"),
         ),
     )
 }
